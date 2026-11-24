@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor AI — Wound Scanner & First-Aid Care Assistant</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    keyframes: {
+                        scanline: {
+                            '0%': { top: '0%', opacity: '0.2' },
+                            '15%': { opacity: '1' },
+                            '85%': { opacity: '1' },
+                            '100%': { top: '100%', opacity: '0.2' },
+                        },
+                        pulseRing: {
+                            '0%': { transform: 'scale(0.95)', opacity: '0.7' },
+                            '70%': { transform: 'scale(1.15)', opacity: '0' },
+                            '100%': { transform: 'scale(1.15)', opacity: '0' },
+                        }
+                    },
+                    animation: {
+                        scanline: 'scanline 2s ease-in-out infinite',
+                        pulseRing: 'pulseRing 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite',
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased selection:bg-sky-100 selection:text-sky-900 min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container (replaces alert/confirm) -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-[calc(100%-2.5rem)] pointer-events-none"></div>
+
+    <!-- Emergency Quick-Reference Top Bar -->
+    <div class="bg-rose-600 text-white text-xs sm:text-sm py-2 px-4">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2 font-medium">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                <span>Severe bleeding, deep puncture, or life-threatening injury? Seek emergency care immediately.</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="tel:112" class="inline-flex items-center gap-1 bg-white/20 hover:bg-white/30 transition px-2.5 py-1 rounded-full font-semibold">
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.61 21 3 13.39 3 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.25 1.01l-2.2 2.2z"/></svg>
+                    112 Emergency
+                </a>
+                <a href="tel:108" class="inline-flex items-center gap-1 bg-white text-rose-700 hover:bg-rose-50 transition px-2.5 py-1 rounded-full font-semibold">
+                    108 Ambulance
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Navigation Header with Custom Doctor AI SVG Thumbnail -->
+    <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            <a href="#" class="flex items-center gap-3 group">
+                <!-- Custom Doctor AI App Logo / Thumbnail SVG -->
+                <div class="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-600 p-0.5 shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform">
+                    <div class="w-full h-full rounded-[14px] bg-gradient-to-br from-sky-500 to-blue-700 flex items-center justify-center relative overflow-hidden">
+                        <svg viewBox="0 0 48 48" class="w-9 h-9" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Doctor AI Logo">
+                            <!-- Scanner corner brackets -->
+                            <path d="M9 15V11C9 9.89543 9.89543 9 11 9H15" stroke="white" stroke-opacity="0.7" stroke-width="2.2" stroke-linecap="round"/>
+                            <path d="M39 15V11C39 9.89543 38.1046 9 37 9H33" stroke="white" stroke-opacity="0.7" stroke-width="2.2" stroke-linecap="round"/>
+                            <path d="M9 33V37C9 38.1046 9.89543 39 11 39H15" stroke="white" stroke-opacity="0.7" stroke-width="2.2" stroke-linecap="round"/>
+                            <path d="M39 33V37C39 38.1046 38.1046 39 37 39H33" stroke="white" stroke-opacity="0.7" stroke-width="2.2" stroke-linecap="round"/>
+                            <!-- Medical Cross -->
+                            <rect x="20.5" y="13" width="7" height="22" rx="2.5" fill="white"/>
+                            <rect x="13" y="20.5" width="22" height="7" rx="2.5" fill="white"/>
+                            <!-- AI Pulse Spark -->
+                            <circle cx="34.5" cy="13.5" r="2.5" fill="#7DD3FC"/>
+                        </svg>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">Doctor <span class="text-sky-600">AI</span></span>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-700 border border-sky-200">
+                            Wound Care
+                        </span>
+                    </div>
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium -mt-0.5">AI Wound Scanner &amp; First-Aid Guide</p>
+                </div>
+            </a>
+
+            <nav class="flex items-center gap-1.5 sm:gap-3">
+                <a href="#scanner-section" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-sky-700 hover:bg-sky-50 transition">
+                    Scanner
+                </a>
+                <a href="#nearby-section" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-sky-700 hover:bg-sky-50 transition">
+                    Hospitals &amp; Shops
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8 sm:space-y-12">
+
+        <!-- Hero Section -->
+        <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 via-blue-600 to-indigo-700 text-white p-6 sm:p-10 shadow-xl shadow-sky-900/10">
+            <!-- Subtle decorative circles -->
+            <div class="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/10 blur-2xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-16 w-64 h-64 rounded-full bg-sky-300/15 blur-2xl pointer-events-none"></div>
+
+            <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div class="lg:col-span-8 space-y-4">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 text-xs font-semibold text-sky-50">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Powered by Google Gemini Vision AI
+                    </div>
+                    <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+                        Scan a Wound. Get Instant First-Aid Solutions &amp; Proper Care.
+                    </h1>
+                    <p class="text-sky-100 text-sm sm:text-base max-w-2xl leading-relaxed">
+                        Upload or snap a photo of a cut, scrape, burn, or skin injury. Doctor AI analyzes the image to provide clear step-by-step first-aid actions, ongoing wound hygiene, infection warning signs, and locates the nearest hospitals and medical shops.
+                    </p>
+                    <div class="flex flex-wrap gap-3 pt-1">
+                        <a href="#scanner-section" class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-blue-700 font-bold text-sm shadow-lg shadow-blue-950/20 hover:bg-sky-50 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                            </svg>
+                            Start Wound Scan
+                        </a>
+                        <a href="#nearby-section" class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/25 text-white font-semibold text-sm transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                            </svg>
+                            Find Nearby Help
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Hero App Thumbnail Visual Card -->
+                <div class="lg:col-span-4 hidden sm:flex justify-center lg:justify-end">
+                    <div class="w-full max-w-xs rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-5 space-y-3.5 shadow-2xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white text-blue-600 flex items-center justify-center shadow-md shrink-0">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-white">3-Step Care Plan</p>
+                                <p class="text-xs text-sky-100">Fast, structured &amp; easy to follow</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-xs text-sky-50">
+                            <div class="flex items-center gap-2.5 bg-white/10 rounded-xl px-3 py-2">
+                                <span class="w-5 h-5 rounded-full bg-emerald-400/25 text-emerald-200 font-bold flex items-center justify-center shrink-0">1</span>
+                                <span>Snap or upload wound thumbnail</span>
+                            </div>
+                            <div class="flex items-center gap-2.5 bg-white/10 rounded-xl px-3 py-2">
+                                <span class="w-5 h-5 rounded-full bg-sky-300/25 text-sky-100 font-bold flex items-center justify-center shrink-0">2</span>
+                                <span>AI first-aid &amp; ongoing care report</span>
+                            </div>
+                            <div class="flex items-center gap-2.5 bg-white/10 rounded-xl px-3 py-2">
+                                <span class="w-5 h-5 rounded-full bg-amber-300/25 text-amber-100 font-bold flex items-center justify-center shrink-0">3</span>
+                                <span>Nearest hospitals &amp; medical shops</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Non-Intrusive Medical Disclaimer Banner -->
+        <div class="rounded-2xl bg-sky-50 border border-sky-200/80 p-4 flex items-start gap-3 text-xs sm:text-sm text-slate-700">
+            <svg class="w-5 h-5 text-sky-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+            <p class="leading-relaxed">
+                <strong class="font-semibold text-slate-900">Medical Disclaimer:</strong> Doctor AI provides AI-assisted first-aid guidance for informational purposes only and is <strong>not</strong> a substitute for professional medical diagnosis, treatment, or emergency care. Always consult a qualified healthcare professional for serious, deep, infected, or non-healing wounds.
+            </p>
+        </div>
+
+        <!-- SECTION 1: WOUND SCANNER & ANALYSIS REPORT -->
+        <section id="scanner-section" class="space-y-8 scroll-mt-20">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+
+                <!-- Left Column: Wound Scanner Input Card -->
+                <div class="lg:col-span-5 bg-white rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-bold text-slate-900">Wound Scanner</h2>
+                            <p class="text-xs sm:text-sm text-slate-500">Upload a clear, well-lit photo of the wound</p>
+                        </div>
+                        <span class="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </span>
+                    </div>
+
+                    <!-- Dropzone / Thumbnail Preview Box -->
+                    <div id="dropZone" class="relative rounded-2xl border-2 border-dashed border-slate-300 hover:border-sky-400 bg-slate-50/70 transition-colors overflow-hidden">
+                        <!-- Empty Upload Prompt -->
+                        <div id="uploadPrompt" class="p-6 sm:p-8 text-center flex flex-col items-center justify-center gap-3 cursor-pointer">
+                            <div class="w-14 h-14 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center text-sky-600">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                </svg>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-sm font-semibold text-slate-800">Drag &amp; drop a wound image here</p>
+                                <p class="text-xs text-slate-500">PNG, JPG, or WEBP • Clear close-up works best</p>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                                <button type="button" id="chooseFileBtn" class="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition">
+                                    Choose Photo
+                                </button>
+                                <button type="button" id="openCameraBtn" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs sm:text-sm font-semibold shadow-sm transition">
+                                    <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                                    </svg>
+                                    Take Photo
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Wound Thumbnail Preview Container (Hidden until image selected) -->
+                        <div id="previewWrapper" class="hidden relative bg-slate-900">
+                            <div class="relative aspect-[4/3] w-full overflow-hidden flex items-center justify-center bg-slate-950">
+                                <img id="woundPreviewImg" src="" alt="Scanned wound thumbnail preview" class="w-full h-full object-contain" />
+
+                                <!-- Scanning Laser Overlay (Visible during Gemini API call) -->
+                                <div id="scanningOverlay" class="hidden absolute inset-0 bg-sky-950/40 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center">
+                                    <div class="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent shadow-[0_0_18px_4px_rgba(56,189,248,0.85)] animate-scanline"></div>
+                                    <div class="bg-slate-900/85 border border-sky-400/40 text-white px-4 py-2.5 rounded-2xl flex items-center gap-2.5 shadow-xl">
+                                        <svg class="w-5 h-5 text-sky-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                        </svg>
+                                        <span class="text-xs sm:text-sm font-semibold tracking-wide">Doctor AI is scanning wound...</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Thumbnail Action Bar -->
+                            <div class="bg-white border-t border-slate-200 px-3.5 py-2.5 flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                    <span id="fileNameLabel" class="text-xs font-medium text-slate-600 truncate">wound-photo.jpg</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <button type="button" id="changePhotoBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 transition">
+                                        Replace
+                                    </button>
+                                    <button type="button" id="removePhotoBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition">
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden File Inputs -->
+                        <input type="file" id="fileInput" accept="image/*" class="hidden" />
+                        <input type="file" id="mobileCameraInput" accept="image/*" capture="environment" class="hidden" />
+                    </div>
+
+                    <!-- Quick Context Chips -->
+                    <div class="space-y-2.5">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                            Optional Quick Context
+                        </label>
+                        <div id="contextChips" class="flex flex-wrap gap-2">
+                            <button type="button" data-chip="Minor Cut" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Minor Cut</button>
+                            <button type="button" data-chip="Scrape / Abrasion" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Scrape</button>
+                            <button type="button" data-chip="Burn" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Burn</button>
+                            <button type="button" data-chip="Active Bleeding" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Bleeding</button>
+                            <button type="button" data-chip="Swelling / Redness" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Swelling</button>
+                            <button type="button" data-chip="Puncture / Splinter" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Puncture</button>
+                        </div>
+                    </div>
+
+                    <!-- Additional Notes Input -->
+                    <div class="space-y-1.5">
+                        <label for="woundNotes" class="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                            Additional Notes (Optional)
+                        </label>
+                        <textarea id="woundNotes" rows="2" placeholder="E.g., Happened 20 minutes ago on a kitchen knife, mild throbbing pain..." class="w-full rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition resize-none"></textarea>
+                    </div>
+
+                    <!-- Analyze Wound CTA Button -->
+                    <button type="button" id="analyzeBtn" disabled class="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-lg shadow-sky-600/20 disabled:shadow-none transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                        </svg>
+                        <span id="analyzeBtnText">Analyze Wound with Doctor AI</span>
+                    </button>
+                </div>
+
+                <!-- Right Column: Analysis Report Panel -->
+                <div class="lg:col-span-7">
+                    <!-- Placeholder State Before Analysis -->
+                    <div id="reportEmptyState" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 sm:p-12 text-center flex flex-col items-center justify-center min-h-[460px] space-y-5">
+                        <div class="w-20 h-20 rounded-3xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-500">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                        </div>
+                        <div class="max-w-md space-y-2">
+                            <h3 class="text-lg sm:text-xl font-bold text-slate-900">Your First-Aid Care Report Will Appear Here</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">
+                                Select or capture a wound image on the left and click <strong>Analyze Wound</strong>. Doctor AI will evaluate the injury and generate:
+                            </p>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg text-left pt-2">
+                            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800">Wound Type &amp; Severity</p>
+                                    <p class="text-[11px] text-slate-500">Color-coded Low, Moderate, or High assessment</p>
+                                </div>
+                            </div>
+                            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800">Immediate Solution</p>
+                                    <p class="text-[11px] text-slate-500">Step-by-step first-aid instructions right now</p>
+                                </div>
+                            </div>
+                            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800">Proper Ongoing Care</p>
+                                    <p class="text-[11px] text-slate-500">Cleaning, dressing, hygiene &amp; recovery tips</p>
+                                </div>
+                            </div>
+                            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold shrink-0">4</span>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800">Red Flags &amp; Supplies</p>
+                                    <p class="text-[11px] text-slate-500">Infection warning signs &amp; pharmacy checklist</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading Skeleton State -->
+                    <div id="reportLoadingState" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6 animate-pulse">
+                        <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                            <div class="w-24 h-24 rounded-2xl bg-slate-200 shrink-0"></div>
+                            <div class="flex-1 space-y-2.5 w-full">
+                                <div class="h-5 bg-slate-200 rounded-lg w-1/3"></div>
+                                <div class="h-6 bg-slate-200 rounded-lg w-2/3"></div>
+                                <div class="h-4 bg-slate-100 rounded-lg w-full"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3 pt-2">
+                            <div class="h-4 bg-slate-200 rounded-lg w-1/4"></div>
+                            <div class="h-14 bg-slate-100 rounded-2xl w-full"></div>
+                            <div class="h-14 bg-slate-100 rounded-2xl w-full"></div>
+                            <div class="h-14 bg-slate-100 rounded-2xl w-full"></div>
+                        </div>
+                    </div>
+
+                    <!-- Final Structured Medical Report -->
+                    <div id="reportResultCard" class="hidden bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                        <!-- High Severity Alert Banner (Shown only when severity is High) -->
+                        <div id="highSeverityBanner" class="hidden bg-rose-600 text-white px-5 py-3.5 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
+                                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                </svg>
+                                <span>High Severity Detected — Please visit the nearest hospital or emergency clinic promptly.</span>
+                            </div>
+                            <a href="#nearby-section" class="shrink-0 px-3 py-1.5 rounded-xl bg-white text-rose-700 font-bold text-xs hover:bg-rose-50 transition">
+                                Find Hospital
+                            </a>
+                        </div>
+
+                        <!-- Report Header with Scanned Wound Thumbnail -->
+                        <div class="p-5 sm:p-7 bg-gradient-to-br from-slate-50 to-sky-50/50 border-b border-slate-200/80">
+                            <div class="flex flex-col sm:flex-row gap-5 items-start">
+                                <!-- Wound Thumbnail in Report -->
+                                <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-slate-900 shrink-0 relative">
+                                    <img id="reportThumbnailImg" src="" alt="Scanned wound thumbnail" class="w-full h-full object-cover" />
+                                    <span class="absolute bottom-1.5 left-1.5 bg-slate-900/75 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                                        Scanned
+                                    </span>
+                                </div>
+
+                                <!-- Assessment Details -->
+                                <div class="flex-1 min-w-0 space-y-2.5">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="text-xs font-bold uppercase tracking-wider text-sky-700">AI Assessment Report</span>
+                                        <span id="severityBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border">
+                                            <!-- Populated dynamically -->
+                                        </span>
+                                    </div>
+                                    <h3 id="reportWoundType" class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">
+                                        <!-- Populated dynamically -->
+                                    </h3>
+                                    <p id="reportSummary" class="text-sm text-slate-600 leading-relaxed">
+                                        <!-- Populated dynamically -->
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Report Body Sections -->
+                        <div class="p-5 sm:p-7 space-y-7">
+                            <!-- 1. Immediate First-Aid Solution -->
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                        </svg>
+                                    </span>
+                                    <div>
+                                        <h4 class="text-base font-bold text-slate-900">Immediate First-Aid Solution</h4>
+                                        <p class="text-xs text-slate-500">Follow these steps right away</p>
+                                    </div>
+                                </div>
+                                <ol id="immediateSolutionList" class="space-y-2.5"></ol>
+                            </div>
+
+                            <!-- 2. Proper Ongoing Care -->
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                                        </svg>
+                                    </span>
+                                    <div>
+                                        <h4 class="text-base font-bold text-slate-900">Proper Ongoing Care &amp; Hygiene</h4>
+                                        <p class="text-xs text-slate-500">How to keep the wound clean and promote healing</p>
+                                    </div>
+                                </div>
+                                <ul id="ongoingCareList" class="space-y-2"></ul>
+                            </div>
+
+                            <!-- 3. Warning Signs / Red Flags -->
+                            <div class="rounded-2xl bg-amber-50/80 border border-amber-200 p-4 sm:p-5 space-y-3">
+                                <div class="flex items-center gap-2 text-amber-900">
+                                    <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                    </svg>
+                                    <h4 class="text-sm sm:text-base font-bold">Warning Signs — When to See a Doctor</h4>
+                                </div>
+                                <ul id="warningSignsList" class="space-y-1.5 text-sm text-amber-950"></ul>
+                            </div>
+
+                            <!-- 4. Recommended First-Aid Supplies -->
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <h4 class="text-sm font-bold uppercase tracking-wider text-slate-500">Recommended First-Aid Supplies</h4>
+                                    <a href="#nearby-section" class="text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline">Find medical shops &rarr;</a>
+                                </div>
+                                <div id="suppliesList" class="flex flex-wrap gap-2"></div>
+                            </div>
+
+                            <!-- Report Footer Actions -->
+                            <div class="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                                <button type="button" id="copyReportBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-semibold transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                                    </svg>
+                                    Copy Care Plan
+                                </button>
+                                <button type="button" id="resetScanBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs sm:text-sm font-semibold transition">
+                                    Scan Another Wound
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: NEAREST HOSPITALS & MEDICAL SHOPS -->
+        <section id="nearby-section" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-8 space-y-6 scroll-mt-20">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-sky-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                        </svg>
+                        Nearby Medical Help
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">Nearest Hospitals &amp; Medical Shops</h2>
+                    <p class="text-xs sm:text-sm text-slate-500">Use your live location or enter your city/area to find hospitals, emergency rooms, and pharmacies.</p>
+                </div>
+
+                <!-- Location Controls -->
+                <div class="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto">
+                    <button type="button" id="useLocationBtn" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25v2.25m0 15v2.25M2.25 12H4.5m15 0h2.25M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z" />
+                        </svg>
+                        Use My Current Location
+                    </button>
+                    <form id="manualLocationForm" class="flex items-center gap-2 w-full sm:w-auto">
+                        <input type="text" id="locationInput" placeholder="Enter city, area, or pincode..." class="w-full sm:w-56 rounded-2xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 transition" />
+                        <button type="submit" id="searchLocationBtn" class="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-semibold transition shrink-0">
+                            Search
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Instant Google Maps Quick-Launch Bar -->
+            <div class="rounded-2xl bg-slate-50 border border-slate-200/80 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 text-xs sm:text-sm text-slate-700">
+                    <span class="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-sky-600 shrink-0 shadow-xs">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <p class="font-semibold text-slate-900" id="activeLocationLabel">Instant Google Maps Shortcuts</p>
+                        <p class="text-xs text-slate-500">Open live navigation directly in Google Maps</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <a id="mapsHospitalsLink" href="https://www.google.com/maps/search/hospitals+near+me" target="_blank" rel="noopener noreferrer" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-sky-50 text-sky-700 border border-slate-200 hover:border-sky-300 text-xs font-semibold transition">
+                        Hospitals
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                    </a>
+                    <a id="mapsEmergencyLink" href="https://www.google.com/maps/search/emergency+room+near+me" target="_blank" rel="noopener noreferrer" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-slate-200 hover:border-rose-300 text-xs font-semibold transition">
+                        Emergency Rooms
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                    </a>
+                    <a id="mapsPharmaciesLink" href="https://www.google.com/maps/search/24+hour+pharmacy+medical+shop+near+me" target="_blank" rel="noopener noreferrer" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 border border-slate-200 hover:border-emerald-300 text-xs font-semibold transition">
+                        24/7 Medical Shops
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Tabs: Nearest Hospitals vs Medical Shops / Pharmacies -->
+            <div class="border-b border-slate-200 flex items-center gap-2">
+                <button type="button" id="tabHospitals" class="nearby-tab px-4 py-3 text-xs sm:text-sm font-bold border-b-2 border-sky-600 text-sky-700 transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+                    </svg>
+                    Nearest Hospitals
+                    <span id="hospitalCountBadge" class="hidden px-2 py-0.5 rounded-full text-[11px] bg-sky-100 text-sky-700">0</span>
+                </button>
+                <button type="button" id="tabPharmacies" class="nearby-tab px-4 py-3 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
+                    </svg>
+                    Medical Shops / Pharmacies
+                    <span id="pharmacyCountBadge" class="hidden px-2 py-0.5 rounded-full text-[11px] bg-emerald-100 text-emerald-700">0</span>
+                </button>
+            </div>
+
+            <!-- Nearby Results Area -->
+            <div id="nearbyEmptyState" class="py-10 text-center space-y-2">
+                <p class="text-sm font-semibold text-slate-700">Enter your city or click "Use My Current Location"</p>
+                <p class="text-xs text-slate-500 max-w-md mx-auto">Doctor AI will list well-known hospitals, emergency care centers, and medical shops/pharmacies near you with instant Google Maps directions.</p>
+            </div>
+
+            <div id="nearbyLoadingState" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+                <div class="h-36 rounded-2xl bg-slate-100"></div>
+                <div class="h-36 rounded-2xl bg-slate-100"></div>
+                <div class="h-36 rounded-2xl bg-slate-100"></div>
+            </div>
+
+            <div id="hospitalsGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div id="pharmaciesGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </section>
+    </main>
+
+    <!-- Live Camera Modal (Desktop & Mobile WebRTC Support) -->
+    <div id="cameraModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                    <h3 class="text-base font-bold text-slate-900">Capture Wound Photo</h3>
+                </div>
+                <button type="button" id="closeCameraModalBtn" class="p-1.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition" aria-label="Close camera">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="relative bg-black aspect-[4/3] w-full flex items-center justify-center overflow-hidden">
+                <video id="cameraVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                <!-- Subtle viewfinder frame -->
+                <div class="absolute inset-8 border-2 border-white/40 rounded-2xl pointer-events-none"></div>
+            </div>
+            <div class="p-4 bg-slate-50 flex items-center justify-between gap-3">
+                <button type="button" id="fallbackFileCameraBtn" class="px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition">
+                    Use Device File Picker
+                </button>
+                <button type="button" id="capturePhotoBtn" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold shadow-md transition">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+                    Snap Photo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-12">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <div class="flex items-center gap-2 font-semibold text-slate-700">
+                <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                Doctor AI — AI-Assisted First-Aid &amp; Wound Care
+            </div>
+            <p>For emergencies, call 112 / 108 or your local emergency number immediately.</p>
+        </div>
+    </footer>
+
+    <!-- Application Logic -->
+    <script>
+        // =========================================================================
+        // CONFIGURATION & STATE
+        // =========================================================================
+        const apiKey = "MY_API_KEY"; // Provided automatically at runtime
+        const GEMINI_MODEL = "gemini-3-flash-preview";
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
+        const state = {
+            imageBase64: null,
+            imageMimeType: "image/jpeg",
+            imageDataUrl: null,
+            selectedChips: new Set(),
+            lastReport: null,
+            cameraStream: null,
+            activeNearbyTab: "hospitals",
+            nearbyData: {
+                hospitals: [],
+                pharmacies: []
+            }
+        };
+
+        // =========================================================================
+        // DOM ELEMENTS
+        // =========================================================================
+        const els = {
+            toastContainer: document.getElementById("toastContainer"),
+            dropZone: document.getElementById("dropZone"),
+            uploadPrompt: document.getElementById("uploadPrompt"),
+            previewWrapper: document.getElementById("previewWrapper"),
+            woundPreviewImg: document.getElementById("woundPreviewImg"),
+            scanningOverlay: document.getElementById("scanningOverlay"),
+            fileNameLabel: document.getElementById("fileNameLabel"),
+            fileInput: document.getElementById("fileInput"),
+            mobileCameraInput: document.getElementById("mobileCameraInput"),
+            chooseFileBtn: document.getElementById("chooseFileBtn"),
+            openCameraBtn: document.getElementById("openCameraBtn"),
+            changePhotoBtn: document.getElementById("changePhotoBtn"),
+            removePhotoBtn: document.getElementById("removePhotoBtn"),
+            contextChips: document.getElementById("contextChips"),
+            woundNotes: document.getElementById("woundNotes"),
+            analyzeBtn: document.getElementById("analyzeBtn"),
+            analyzeBtnText: document.getElementById("analyzeBtnText"),
+
+            // Report elements
+            reportEmptyState: document.getElementById("reportEmptyState"),
+            reportLoadingState: document.getElementById("reportLoadingState"),
+            reportResultCard: document.getElementById("reportResultCard"),
+            highSeverityBanner: document.getElementById("highSeverityBanner"),
+            reportThumbnailImg: document.getElementById("reportThumbnailImg"),
+            severityBadge: document.getElementById("severityBadge"),
+            reportWoundType: document.getElementById("reportWoundType"),
+            reportSummary: document.getElementById("reportSummary"),
+            immediateSolutionList: document.getElementById("immediateSolutionList"),
+            ongoingCareList: document.getElementById("ongoingCareList"),
+            warningSignsList: document.getElementById("warningSignsList"),
+            suppliesList: document.getElementById("suppliesList"),
+            copyReportBtn: document.getElementById("copyReportBtn"),
+            resetScanBtn: document.getElementById("resetScanBtn"),
+
+            // Camera modal elements
+            cameraModal: document.getElementById("cameraModal"),
+            cameraVideo: document.getElementById("cameraVideo"),
+            closeCameraModalBtn: document.getElementById("closeCameraModalBtn"),
+            capturePhotoBtn: document.getElementById("capturePhotoBtn"),
+            fallbackFileCameraBtn: document.getElementById("fallbackFileCameraBtn"),
+
+            // Nearby elements
+            useLocationBtn: document.getElementById("useLocationBtn"),
+            manualLocationForm: document.getElementById("manualLocationForm"),
+            locationInput: document.getElementById("locationInput"),
+            activeLocationLabel: document.getElementById("activeLocationLabel"),
+            mapsHospitalsLink: document.getElementById("mapsHospitalsLink"),
+            mapsEmergencyLink: document.getElementById("mapsEmergencyLink"),
+            mapsPharmaciesLink: document.getElementById("mapsPharmaciesLink"),
+            tabHospitals: document.getElementById("tabHospitals"),
+            tabPharmacies: document.getElementById("tabPharmacies"),
+            hospitalCountBadge: document.getElementById("hospitalCountBadge"),
+            pharmacyCountBadge: document.getElementById("pharmacyCountBadge"),
+            nearbyEmptyState: document.getElementById("nearbyEmptyState"),
+            nearbyLoadingState: document.getElementById("nearbyLoadingState"),
+            hospitalsGrid: document.getElementById("hospitalsGrid"),
+            pharmaciesGrid: document.getElementById("pharmaciesGrid")
+        };
+
+        // =========================================================================
+        // UTILITIES: TOASTS, HTML ESCAPING, IMAGE COMPRESSION, EXPONENTIAL BACKOFF
+        // =========================================================================
+
+        /**
+         * Displays a non-blocking toast notification.
+         */
+        function showToast(message, type = "info") {
+            const colors = {
+                info: "bg-slate-900 text-white border-slate-700",
+                success: "bg-emerald-700 text-white border-emerald-600",
+                error: "bg-rose-600 text-white border-rose-500",
+                warning: "bg-amber-600 text-white border-amber-500"
+            };
+            const toast = document.createElement("div");
+            toast.className = `pointer-events-auto px-4 py-3 rounded-2xl border shadow-lg text-xs sm:text-sm font-medium flex items-center justify-between gap-3 transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+            els.toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+
+        /**
+         * Escapes HTML special characters to safely render dynamic strings.
+         */
+        function escapeHtml(str) {
+            if (typeof str !== "string") return "";
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        /**
+         * Resizes and compresses an image file or canvas to keep Gemini API payloads fast and reliable.
+         */
+        function compressImageToJpeg(imgSource, maxDim = 1024, quality = 0.85) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const canvas = document.createElement("canvas");
+                    let width = imgSource.naturalWidth || imgSource.videoWidth || imgSource.width;
+                    let height = imgSource.naturalHeight || imgSource.videoHeight || imgSource.height;
+
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(imgSource, 0, 0, width, height);
+
+                    const dataUrl = canvas.toDataURL("image/jpeg", quality);
+                    const base64 = dataUrl.split(",")[1];
+                    resolve({ dataUrl, base64, mimeType: "image/jpeg" });
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        }
+
+        /**
+         * Fetch wrapper with exponential backoff for Gemini API throttling/transient errors.
+         */
+        async function fetchGeminiWithBackoff(payload, maxRetries = 4) {
+            let delay = 1000;
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await fetch(GEMINI_API_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        return await response.json();
+                    }
+
+                    // Retry on rate limit or server errors
+                    if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+                        await new Promise(r => setTimeout(r, delay));
+                        delay *= 2;
+                        continue;
+                    }
+
+                    const errorText = await response.text();
+                    throw new Error(`API request failed (${response.status}): ${errorText}`);
+                } catch (err) {
+                    if (attempt < maxRetries) {
+                        await new Promise(r => setTimeout(r, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    throw err;
+                }
+            }
+        }
+
+        // =========================================================================
+        // IMAGE UPLOAD, DRAG-AND-DROP & CAMERA CAPTURE
+        // =========================================================================
+
+        function handleFileSelection(file) {
+            if (!file) return;
+            if (!file.type.startsWith("image/")) {
+                showToast("Please select a valid image file (JPG, PNG, or WEBP).", "error");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = async () => {
+                    try {
+                        const compressed = await compressImageToJpeg(img);
+                        setSelectedImage(compressed.dataUrl, compressed.base64, compressed.mimeType, file.name);
+                    } catch (err) {
+                        showToast("Could not process this image. Please try another photo.", "error");
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setSelectedImage(dataUrl, base64, mimeType, fileName) {
+            state.imageDataUrl = dataUrl;
+            state.imageBase64 = base64;
+            state.imageMimeType = mimeType;
+
+            els.woundPreviewImg.src = dataUrl;
+            els.fileNameLabel.textContent = fileName || "captured-wound.jpg";
+            els.uploadPrompt.classList.add("hidden");
+            els.previewWrapper.classList.remove("hidden");
+            els.dropZone.classList.remove("border-dashed");
+            els.dropZone.classList.add("border-solid", "border-sky-300");
+            els.analyzeBtn.disabled = false;
+        }
+
+        function clearSelectedImage() {
+            state.imageDataUrl = null;
+            state.imageBase64 = null;
+            els.fileInput.value = "";
+            els.mobileCameraInput.value = "";
+            els.woundPreviewImg.src = "";
+            els.previewWrapper.classList.add("hidden");
+            els.uploadPrompt.classList.remove("hidden");
+            els.dropZone.classList.add("border-dashed");
+            els.dropZone.classList.remove("border-solid", "border-sky-300");
+            els.analyzeBtn.disabled = true;
+        }
+
+        // File Picker Triggers
+        els.chooseFileBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            els.fileInput.click();
+        });
+        els.uploadPrompt.addEventListener("click", () => els.fileInput.click());
+        els.changePhotoBtn.addEventListener("click", () => els.fileInput.click());
+        els.removePhotoBtn.addEventListener("click", clearSelectedImage);
+
+        els.fileInput.addEventListener("change", (e) => {
+            if (e.target.files?.[0]) handleFileSelection(e.target.files[0]);
+        });
+        els.mobileCameraInput.addEventListener("change", (e) => {
+            if (e.target.files?.[0]) handleFileSelection(e.target.files[0]);
+        });
+
+        // Drag and Drop Events
+        ["dragenter", "dragover"].forEach(evtName => {
+            els.dropZone.addEventListener(evtName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                els.dropZone.classList.add("border-sky-500", "bg-sky-50/70");
+            });
+        });
+        ["dragleave", "drop"].forEach(evtName => {
+            els.dropZone.addEventListener(evtName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                els.dropZone.classList.remove("border-sky-500", "bg-sky-50/70");
+            });
+        });
+        els.dropZone.addEventListener("drop", (e) => {
+            const file = e.dataTransfer?.files?.[0];
+            if (file) handleFileSelection(file);
+        });
+
+        // Live Camera Modal
+        async function openLiveCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                els.mobileCameraInput.click();
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 960 } },
+                    audio: false
+                });
+                state.cameraStream = stream;
+                els.cameraVideo.srcObject = stream;
+                els.cameraModal.classList.remove("hidden");
+            } catch (err) {
+                // Gracefully fall back to native file/camera picker if permission denied or no webcam
+                showToast("Camera access unavailable. Opening device photo picker instead.", "info");
+                els.mobileCameraInput.click();
+            }
+        }
+
+        function closeLiveCamera() {
+            if (state.cameraStream) {
+                state.cameraStream.getTracks().forEach(track => track.stop());
+                state.cameraStream = null;
+            }
+            els.cameraVideo.srcObject = null;
+            els.cameraModal.classList.add("hidden");
+        }
+
+        els.openCameraBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openLiveCamera();
+        });
+        els.closeCameraModalBtn.addEventListener("click", closeLiveCamera);
+        els.fallbackFileCameraBtn.addEventListener("click", () => {
+            closeLiveCamera();
+            els.mobileCameraInput.click();
+        });
+        els.capturePhotoBtn.addEventListener("click", async () => {
+            try {
+                const compressed = await compressImageToJpeg(els.cameraVideo);
+                setSelectedImage(compressed.dataUrl, compressed.base64, compressed.mimeType, "camera-wound-scan.jpg");
+                closeLiveCamera();
+                showToast("Photo captured! Ready to analyze.", "success");
+            } catch (err) {
+                showToast("Unable to capture photo. Please try again.", "error");
+            }
+        });
+
+        // Quick-Select Context Chips
+        els.contextChips.addEventListener("click", (e) => {
+            const btn = e.target.closest(".chip-btn");
+            if (!btn) return;
+            const value = btn.dataset.chip;
+            if (state.selectedChips.has(value)) {
+                state.selectedChips.delete(value);
+                btn.classList.remove("bg-sky-600", "text-white", "border-sky-600", "shadow-sm");
+                btn.classList.add("bg-slate-50", "text-slate-700", "border-slate-200");
+            } else {
+                state.selectedChips.add(value);
+                btn.classList.remove("bg-slate-50", "text-slate-700", "border-slate-200");
+                btn.classList.add("bg-sky-600", "text-white", "border-sky-600", "shadow-sm");
+            }
+        });
+
+        // =========================================================================
+        // GEMINI API: MULTIMODAL WOUND ANALYSIS
+        // =========================================================================
+
+        els.analyzeBtn.addEventListener("click", analyzeWound);
+
+        async function analyzeWound() {
+            if (!state.imageBase64) {
+                showToast("Please upload or capture a wound image first.", "warning");
+                return;
+            }
+
+            // Set scanning UI states
+            els.analyzeBtn.disabled = true;
+            els.analyzeBtnText.textContent = "Scanning Wound...";
+            els.scanningOverlay.classList.remove("hidden");
+            els.reportEmptyState.classList.add("hidden");
+            els.reportResultCard.classList.add("hidden");
+            els.reportLoadingState.classList.remove("hidden");
+
+            const selectedTags = Array.from(state.selectedChips).join(", ");
+            const userNotes = els.woundNotes.value.trim();
+
+            const promptText = [
+                "You are Doctor AI, an empathetic, safety-first first-aid and wound care assistant.",
+                "Analyze the provided wound photo carefully along with any user-provided context.",
+                "Provide practical, evidence-based first-aid guidance and proper ongoing wound care instructions.",
+                "If the image does not appear to show a wound or skin injury, still return valid JSON politely explaining what is visible and advising the user to upload a clear photo of the injury.",
+                "Severity classification rules:",
+                "- 'Low': minor superficial cuts, scrapes, small blisters, or mild first-degree burns manageable at home.",
+                "- 'Moderate': deeper cuts, larger abrasions, partial burns, noticeable swelling, or wounds needing careful monitoring or clinic evaluation.",
+                "- 'High': deep lacerations, heavy bleeding, severe burns, animal bites, punctures, or visible signs of serious infection requiring urgent medical care.",
+                selectedTags ? `User selected quick context tags: ${selectedTags}` : "",
+                userNotes ? `User additional notes: ${userNotes}` : ""
+            ].filter(Boolean).join("\n");
+
+            const payload = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: promptText },
+                            {
+                                inlineData: {
+                                    mimeType: state.imageMimeType,
+                                    data: state.imageBase64
+                                }
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            wound_type: { type: "STRING" },
+                            severity_level: { type: "STRING", enum: ["Low", "Moderate", "High"] },
+                            assessment_summary: { type: "STRING" },
+                            immediate_solution: {
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            },
+                            ongoing_care: {
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            },
+                            warning_signs: {
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            },
+                            recommended_supplies: {
+                                type: "ARRAY",
+                                items: { type: "STRING" }
+                            }
+                        },
+                        required: [
+                            "wound_type",
+                            "severity_level",
+                            "assessment_summary",
+                            "immediate_solution",
+                            "ongoing_care",
+                            "warning_signs",
+                            "recommended_supplies"
+                        ]
+                    }
+                }
+            };
+
+            try {
+                const result = await fetchGeminiWithBackoff(payload);
+                const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!rawText) {
+                    throw new Error("Empty response from Gemini API.");
+                }
+
+                const parsedReport = JSON.parse(rawText);
+                state.lastReport = parsedReport;
+                renderWoundReport(parsedReport);
+                showToast("Wound analysis complete!", "success");
+            } catch (err) {
+                console.error("Wound analysis error:", err);
+                els.reportLoadingState.classList.add("hidden");
+                els.reportEmptyState.classList.remove("hidden");
+                showToast("Could not analyze the wound right now. Please try again.", "error");
+            } finally {
+                els.scanningOverlay.classList.add("hidden");
+                els.analyzeBtn.disabled = false;
+                els.analyzeBtnText.textContent = "Analyze Wound with Doctor AI";
+            }
+        }
+
+        function renderWoundReport(report) {
+            els.reportLoadingState.classList.add("hidden");
+            els.reportEmptyState.classList.add("hidden");
+            els.reportResultCard.classList.remove("hidden");
+
+            // Thumbnail & Header
+            els.reportThumbnailImg.src = state.imageDataUrl;
+            els.reportWoundType.textContent = report.wound_type || "Wound Assessment";
+            els.reportSummary.textContent = report.assessment_summary || "";
+
+            // Color-coded severity badge
+            const severity = (report.severity_level || "Moderate").trim();
+            const badgeStyles = {
+                Low: {
+                    classes: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                    dot: "bg-emerald-500",
+                    label: "Low Severity"
+                },
+                Moderate: {
+                    classes: "bg-amber-50 text-amber-800 border-amber-200",
+                    dot: "bg-amber-500",
+                    label: "Moderate Severity"
+                },
+                High: {
+                    classes: "bg-rose-50 text-rose-700 border-rose-200",
+                    dot: "bg-rose-600",
+                    label: "High Severity"
+                }
+            };
+            const style = badgeStyles[severity] || badgeStyles.Moderate;
+            els.severityBadge.className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${style.classes}`;
+            els.severityBadge.innerHTML = `<span class="w-2 h-2 rounded-full ${style.dot}"></span>${style.label}`;
+
+            // Show urgent banner if High severity
+            if (severity === "High") {
+                els.highSeverityBanner.classList.remove("hidden");
+            } else {
+                els.highSeverityBanner.classList.add("hidden");
+            }
+
+            // 1. Immediate First-Aid Solution (Numbered)
+            const steps = Array.isArray(report.immediate_solution) ? report.immediate_solution : [];
+            els.immediateSolutionList.innerHTML = steps.map((step, index) => `
+                <li class="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">${index + 1}</span>
+                    <span class="text-sm text-slate-700 leading-relaxed">${escapeHtml(step)}</span>
+                </li>
+            `).join("");
+
+            // 2. Ongoing Care
+            const careItems = Array.isArray(report.ongoing_care) ? report.ongoing_care : [];
+            els.ongoingCareList.innerHTML = careItems.map(item => `
+                <li class="flex items-start gap-2.5 text-sm text-slate-700 leading-relaxed">
+                    <svg class="w-4 h-4 text-sky-600 shrink-0 mt-1" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    <span>${escapeHtml(item)}</span>
+                </li>
+            `).join("");
+
+            // 3. Warning Signs
+            const warnings = Array.isArray(report.warning_signs) ? report.warning_signs : [];
+            els.warningSignsList.innerHTML = warnings.map(sign => `
+                <li class="flex items-start gap-2">
+                    <span class="text-amber-600 font-bold mt-0.5">&bull;</span>
+                    <span>${escapeHtml(sign)}</span>
+                </li>
+            `).join("");
+
+            // 4. Recommended Supplies
+            const supplies = Array.isArray(report.recommended_supplies) ? report.recommended_supplies : [];
+            els.suppliesList.innerHTML = supplies.map(item => `
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200/80 text-sky-900 text-xs font-semibold">
+                    <svg class="w-3.5 h-3.5 text-sky-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    ${escapeHtml(item)}
+                </span>
+            `).join("");
+
+            // Smooth scroll into view on mobile
+            if (window.innerWidth < 1024) {
+                els.reportResultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        }
+
+        // Copy Care Plan to Clipboard (using document.execCommand for iFrame compatibility)
+        els.copyReportBtn.addEventListener("click", () => {
+            if (!state.lastReport) return;
+            const r = state.lastReport;
+            const plainText = [
+                `DOCTOR AI — WOUND CARE REPORT`,
+                `Wound Type: ${r.wound_type}`,
+                `Severity: ${r.severity_level}`,
+                `Summary: ${r.assessment_summary}`,
+                ``,
+                `IMMEDIATE FIRST-AID SOLUTION:`,
+                ...(r.immediate_solution || []).map((s, i) => `${i + 1}. ${s}`),
+                ``,
+                `PROPER ONGOING CARE:`,
+                ...(r.ongoing_care || []).map(c => `- ${c}`),
+                ``,
+                `WARNING SIGNS (SEEK MEDICAL HELP):`,
+                ...(r.warning_signs || []).map(w => `! ${w}`),
+                ``,
+                `RECOMMENDED SUPPLIES: ${(r.recommended_supplies || []).join(", ")}`,
+                ``,
+                `Disclaimer: AI-assisted first-aid guidance only. Not a substitute for professional medical care.`
+            ].join("\n");
+
+            const textArea = document.createElement("textarea");
+            textArea.value = plainText;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand("copy");
+                showToast("Care plan copied to clipboard!", "success");
+            } catch (err) {
+                showToast("Could not copy text automatically.", "error");
+            }
+            document.body.removeChild(textArea);
+        });
+
+        // Reset Scan
+        els.resetScanBtn.addEventListener("click", () => {
+            clearSelectedImage();
+            els.woundNotes.value = "";
+            state.selectedChips.clear();
+            document.querySelectorAll(".chip-btn").forEach(btn => {
+                btn.classList.remove("bg-sky-600", "text-white", "border-sky-600", "shadow-sm");
+                btn.classList.add("bg-slate-50", "text-slate-700", "border-slate-200");
+            });
+            els.reportResultCard.classList.add("hidden");
+            els.reportEmptyState.classList.remove("hidden");
+            document.getElementById("scanner-section").scrollIntoView({ behavior: "smooth" });
+        });
+
+        // =========================================================================
+        // NEAREST HOSPITALS & MEDICAL SHOPS (GEOLOCATION + GEMINI SEARCH GROUNDING)
+        // =========================================================================
+
+        function updateMapsLinks(locationQuery, coords = null) {
+            if (coords) {
+                const { lat, lng } = coords;
+                els.mapsHospitalsLink.href = `https://www.google.com/maps/search/hospitals/@${lat},${lng},14z`;
+                els.mapsEmergencyLink.href = `https://www.google.com/maps/search/emergency+room/@${lat},${lng},14z`;
+                els.mapsPharmaciesLink.href = `https://www.google.com/maps/search/24+hour+pharmacy+medical+shop/@${lat},${lng},14z`;
+                els.activeLocationLabel.textContent = `Google Maps ready for your current GPS location`;
+            } else if (locationQuery) {
+                const q = encodeURIComponent(locationQuery);
+                els.mapsHospitalsLink.href = `https://www.google.com/maps/search/hospitals+in+${q}`;
+                els.mapsEmergencyLink.href = `https://www.google.com/maps/search/emergency+room+in+${q}`;
+                els.mapsPharmaciesLink.href = `https://www.google.com/maps/search/medical+shop+pharmacy+in+${q}`;
+                els.activeLocationLabel.textContent = `Google Maps ready for "${locationQuery}"`;
+            }
+        }
+
+        // Geolocation button
+        els.useLocationBtn.addEventListener("click", () => {
+            if (!navigator.geolocation) {
+                showToast("Geolocation is not supported by your browser. Please enter your city manually.", "warning");
+                els.locationInput.focus();
+                return;
+            }
+
+            els.useLocationBtn.disabled = true;
+            showToast("Detecting your current location...", "info");
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    els.useLocationBtn.disabled = false;
+                    const lat = position.coords.latitude.toFixed(5);
+                    const lng = position.coords.longitude.toFixed(5);
+                    updateMapsLinks(null, { lat, lng });
+                    fetchNearbyMedicalHelp(`coordinates ${lat}, ${lng}`, { lat, lng });
+                },
+                () => {
+                    els.useLocationBtn.disabled = false;
+                    showToast("Location permission denied. Please enter your city or pincode manually.", "warning");
+                    els.locationInput.focus();
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        });
+
+        // Manual location search
+        els.manualLocationForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const city = els.locationInput.value.trim();
+            if (!city) {
+                showToast("Please enter a city, neighborhood, or pincode.", "warning");
+                els.locationInput.focus();
+                return;
+            }
+            updateMapsLinks(city, null);
+            fetchNearbyMedicalHelp(city, null);
+        });
+
+        // Switch Nearby Tabs
+        function setActiveNearbyTab(tab) {
+            state.activeNearbyTab = tab;
+            const isHospitals = tab === "hospitals";
+
+            els.tabHospitals.classList.toggle("border-sky-600", isHospitals);
+            els.tabHospitals.classList.toggle("text-sky-700", isHospitals);
+            els.tabHospitals.classList.toggle("border-transparent", !isHospitals);
+            els.tabHospitals.classList.toggle("text-slate-500", !isHospitals);
+
+            els.tabPharmacies.classList.toggle("border-emerald-600", !isHospitals);
+            els.tabPharmacies.classList.toggle("text-emerald-700", !isHospitals);
+            els.tabPharmacies.classList.toggle("border-transparent", isHospitals);
+            els.tabPharmacies.classList.toggle("text-slate-500", isHospitals);
+
+            if (state.nearbyData.hospitals.length > 0 || state.nearbyData.pharmacies.length > 0) {
+                els.hospitalsGrid.classList.toggle("hidden", !isHospitals);
+                els.pharmaciesGrid.classList.toggle("hidden", isHospitals);
+            }
+        }
+
+        els.tabHospitals.addEventListener("click", () => setActiveNearbyTab("hospitals"));
+        els.tabPharmacies.addEventListener("click", () => setActiveNearbyTab("pharmacies"));
+
+        /**
+         * Uses Gemini API with Google Search grounding to retrieve well-known nearby hospitals and medical shops.
+         */
+        async function fetchNearbyMedicalHelp(locationDescription, coords) {
+            els.nearbyEmptyState.classList.add("hidden");
+            els.hospitalsGrid.classList.add("hidden");
+            els.pharmaciesGrid.classList.add("hidden");
+            els.nearbyLoadingState.classList.remove("hidden");
+
+            const prompt = `Find well-known hospitals (with emergency care) and popular medical shops / pharmacy chains near ${locationDescription}.
+Return ONLY a valid raw JSON object (no markdown fences, no extra text) with this exact structure:
+{
+  "area_name": "Short readable city/area name",
+  "hospitals": [
+    {
+      "name": "Hospital Name",
+      "specialty": "e.g., Multi-specialty & 24/7 Emergency",
+      "address": "Short area or street address",
+      "hours": "e.g., Open 24 Hours"
+    }
+  ],
+  "pharmacies": [
+    {
+      "name": "Pharmacy / Medical Shop Name",
+      "type": "e.g., 24/7 Pharmacy & First-Aid Supplies",
+      "address": "Short area or street address",
+      "hours": "e.g., Open 24 Hours or 8 AM - 11 PM"
+    }
+  ]
+}
+Provide 4 to 6 real, well-known hospitals and 4 to 6 real medical shops/pharmacies for that area.`;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                tools: [{ google_search: {} }]
+            };
+
+            try {
+                const result = await fetchGeminiWithBackoff(payload);
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+                // Safely extract JSON from response (in case model wraps in markdown fences)
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) {
+                    throw new Error("Could not parse nearby places JSON.");
+                }
+
+                const parsed = JSON.parse(jsonMatch[0]);
+                const areaName = parsed.area_name || locationDescription;
+
+                if (coords && parsed.area_name) {
+                    els.activeLocationLabel.textContent = `Showing nearby medical help around ${parsed.area_name}`;
+                }
+
+                state.nearbyData.hospitals = Array.isArray(parsed.hospitals) ? parsed.hospitals : [];
+                state.nearbyData.pharmacies = Array.isArray(parsed.pharmacies) ? parsed.pharmacies : [];
+
+                renderNearbyCards(areaName);
+                showToast(`Found nearby hospitals & medical shops for ${areaName}.`, "success");
+            } catch (err) {
+                console.error("Nearby lookup error:", err);
+                els.nearbyLoadingState.classList.add("hidden");
+                els.nearbyEmptyState.classList.remove("hidden");
+                showToast("Could not fetch local listings, but Google Maps shortcuts above are ready!", "warning");
+            }
+        }
+
+        function renderNearbyCards(areaName) {
+            els.nearbyLoadingState.classList.add("hidden");
+
+            const hospitals = state.nearbyData.hospitals;
+            const pharmacies = state.nearbyData.pharmacies;
+
+            els.hospitalCountBadge.textContent = hospitals.length;
+            els.hospitalCountBadge.classList.remove("hidden");
+            els.pharmacyCountBadge.textContent = pharmacies.length;
+            els.pharmacyCountBadge.classList.remove("hidden");
+
+            // Render Hospitals
+            els.hospitalsGrid.innerHTML = hospitals.map(h => {
+                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${h.name} ${h.address || areaName}`)}`;
+                return `
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-sky-300 hover:shadow-md transition p-4 flex flex-col justify-between gap-4">
+                        <div class="space-y-2">
+                            <div class="flex items-start justify-between gap-2">
+                                <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-snug">${escapeHtml(h.name)}</h3>
+                                <span class="shrink-0 px-2 py-0.5 rounded-lg bg-sky-100 text-sky-700 text-[10px] font-bold uppercase">Hospital</span>
+                            </div>
+                            <p class="text-xs font-medium text-sky-700">${escapeHtml(h.specialty || "General & Emergency Care")}</p>
+                            <p class="text-xs text-slate-500 leading-relaxed">${escapeHtml(h.address || areaName)}</p>
+                            <p class="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                ${escapeHtml(h.hours || "Open 24 Hours")}
+                            </p>
+                        </div>
+                        <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white hover:bg-sky-600 text-sky-700 hover:text-white border border-sky-200 hover:border-sky-600 text-xs font-bold transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                            </svg>
+                            Directions on Google Maps
+                        </a>
+                    </div>
+                `;
+            }).join("");
+
+            // Render Medical Shops / Pharmacies
+            els.pharmaciesGrid.innerHTML = pharmacies.map(p => {
+                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${p.address || areaName}`)}`;
+                return `
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-emerald-300 hover:shadow-md transition p-4 flex flex-col justify-between gap-4">
+                        <div class="space-y-2">
+                            <div class="flex items-start justify-between gap-2">
+                                <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-snug">${escapeHtml(p.name)}</h3>
+                                <span class="shrink-0 px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase">Pharmacy</span>
+                            </div>
+                            <p class="text-xs font-medium text-emerald-700">${escapeHtml(p.type || "Medical Shop & First-Aid Supplies")}</p>
+                            <p class="text-xs text-slate-500 leading-relaxed">${escapeHtml(p.address || areaName)}</p>
+                            <p class="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                ${escapeHtml(p.hours || "Check hours on Maps")}
+                            </p>
+                        </div>
+                        <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 text-xs font-bold transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                            </svg>
+                            Directions on Google Maps
+                        </a>
+                    </div>
+                `;
+            }).join("");
+
+            setActiveNearbyTab(state.activeNearbyTab);
+        }
+    </script>
+</body>
+</html>
