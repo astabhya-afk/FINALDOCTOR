@@ -100,12 +100,22 @@
             </a>
 
             <nav class="flex items-center gap-1.5 sm:gap-3">
-                <a href="#scanner-section" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-sky-700 hover:bg-sky-50 transition">
+                <a href="#scanner-section" class="hidden sm:inline-flex px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-sky-700 hover:bg-sky-50 transition">
                     Scanner
                 </a>
-                <a href="#nearby-section" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-sky-700 hover:bg-sky-50 transition">
+                <a href="#nearby-section" class="hidden sm:inline-flex px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-sky-700 hover:bg-sky-50 transition">
                     Hospitals &amp; Shops
                 </a>
+                <button type="button" id="openApiKeyModalBtn" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 text-xs sm:text-sm font-semibold text-slate-700 hover:text-sky-800 transition">
+                    <svg class="w-4 h-4 text-sky-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                    </svg>
+                    <span class="hidden md:inline">API Key Settings</span>
+                    <span id="apiKeyStatusBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                        Add Key
+                    </span>
+                </button>
             </nav>
         </div>
     </header>
@@ -283,12 +293,12 @@
                             Optional Quick Context
                         </label>
                         <div id="contextChips" class="flex flex-wrap gap-2">
-                            <button type="button" data-chip="Minor Cut" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Minor Cut</button>
-                            <button type="button" data-chip="Scrape / Abrasion" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Scrape</button>
+                            <button type="button" data-chip="Cut / Laceration" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Cut / Laceration</button>
                             <button type="button" data-chip="Burn" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Burn</button>
-                            <button type="button" data-chip="Active Bleeding" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Bleeding</button>
-                            <button type="button" data-chip="Swelling / Redness" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Swelling</button>
-                            <button type="button" data-chip="Puncture / Splinter" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Puncture</button>
+                            <button type="button" data-chip="Scrape / Abrasion" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Scrape / Abrasion</button>
+                            <button type="button" data-chip="Bite / Sting" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Bite / Sting</button>
+                            <button type="button" data-chip="Bleeding" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Bleeding</button>
+                            <button type="button" data-chip="Swollen" class="chip-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-300 hover:bg-sky-50 transition">Swollen</button>
                         </div>
                     </div>
 
@@ -571,18 +581,57 @@
 
             <!-- Nearby Results Area -->
             <div id="nearbyEmptyState" class="py-10 text-center space-y-2">
-                <p class="text-sm font-semibold text-slate-700">Enter your city or click "Use My Current Location"</p>
-                <p class="text-xs text-slate-500 max-w-md mx-auto">Doctor AI will list well-known hospitals, emergency care centers, and medical shops/pharmacies near you with instant Google Maps directions.</p>
+                <p class="text-sm font-semibold text-slate-700">Enter your city, area, or 6-digit pincode — or click "Use My Current Location"</p>
+                <p class="text-xs text-slate-500 max-w-md mx-auto">Doctor AI uses free OpenStreetMap &amp; Google Maps data (no API key required) to list nearest hospitals, clinics, and medical shops with exact distances and directions.</p>
             </div>
 
-            <div id="nearbyLoadingState" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
-                <div class="h-36 rounded-2xl bg-slate-100"></div>
-                <div class="h-36 rounded-2xl bg-slate-100"></div>
-                <div class="h-36 rounded-2xl bg-slate-100"></div>
+            <div id="nearbyLoadingState" class="hidden space-y-3">
+                <div class="flex items-center gap-2 text-xs font-semibold text-sky-700">
+                    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                    <span id="nearbyLoadingText">Locating nearby hospitals and medical shops...</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+                    <div class="h-40 rounded-2xl bg-slate-100 border border-slate-200/60"></div>
+                    <div class="h-40 rounded-2xl bg-slate-100 border border-slate-200/60"></div>
+                    <div class="h-40 rounded-2xl bg-slate-100 border border-slate-200/60"></div>
+                </div>
+            </div>
+
+            <!-- Fallback State if Overpass returns 0 results or times out -->
+            <div id="nearbyNoResultsState" class="hidden rounded-2xl bg-amber-50/70 border border-amber-200 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <p id="nearbyNoResultsTitle" class="text-sm font-bold text-amber-950">No OpenStreetMap directory listings found in this radius</p>
+                    <p id="nearbyNoResultsDesc" class="text-xs text-amber-900/80">You can retry the directory search or browse live nearby facilities directly in the interactive map below.</p>
+                </div>
+                <button type="button" id="retryNearbyBtn" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    Retry Listings
+                </button>
             </div>
 
             <div id="hospitalsGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             <div id="pharmaciesGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+            <!-- Embedded Live Google Maps Preview -->
+            <div id="nearbyMapContainer" class="hidden rounded-2xl border border-slate-200 overflow-hidden bg-slate-50">
+                <div class="px-4 py-3 bg-white border-b border-slate-200 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span id="embeddedMapTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate">Live Map Preview</span>
+                    </div>
+                    <button type="button" id="toggleMapBtn" class="shrink-0 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
+                        Hide Map
+                    </button>
+                </div>
+                <div id="embeddedMapBody" class="w-full h-72 sm:h-80 bg-slate-100">
+                    <iframe id="nearbyMapIframe" title="Nearby Hospitals and Medical Shops Map" src="about:blank" class="w-full h-full border-0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -617,6 +666,74 @@
         </div>
     </div>
 
+    <!-- GitHub-Safe Gemini API Key Settings Modal -->
+    <div id="apiKeyModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Gemini API Key Settings</h3>
+                        <p class="text-[11px] text-slate-500">Stored safely in your browser only</p>
+                    </div>
+                </div>
+                <button type="button" id="closeApiKeyModalBtn" class="p-1.5 rounded-xl text-slate-500 hover:bg-slate-200/70 hover:text-slate-800 transition" aria-label="Close API key settings">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <p id="apiKeyPromptText" class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    Enter your Google Gemini API key to enable AI wound scanning. Your key is saved strictly in your browser's <code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-[11px]">localStorage</code> — it is never hardcoded or uploaded to GitHub.
+                </p>
+
+                <div class="space-y-1.5">
+                    <label for="apiKeyInput" class="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Google Gemini API Key
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="apiKeyInput" autocomplete="off" placeholder="AIzaSy..." class="w-full rounded-2xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none pl-3.5 pr-11 py-2.5 text-sm font-mono text-slate-800 placeholder:text-slate-400 transition" />
+                        <button type="button" id="toggleApiKeyVisibilityBtn" class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition" aria-label="Show or hide API key">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Test / Validation Feedback Box -->
+                <div id="apiKeyFeedback" class="hidden rounded-xl px-3.5 py-2.5 text-xs font-semibold border"></div>
+
+                <div class="flex flex-wrap items-center gap-2 pt-1">
+                    <button type="button" id="saveApiKeyBtn" class="flex-1 py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-bold shadow-sm transition">
+                        Save Key
+                    </button>
+                    <button type="button" id="testApiKeyBtn" class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-semibold transition">
+                        Test Key
+                    </button>
+                    <button type="button" id="clearApiKeyBtn" class="py-2.5 px-3.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-semibold transition">
+                        Clear
+                    </button>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>Need a free Gemini API key?</span>
+                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-bold text-sky-600 hover:text-sky-700 hover:underline">
+                        Open Google AI Studio
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 mt-12">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
@@ -633,9 +750,14 @@
         // =========================================================================
         // CONFIGURATION & STATE
         // =========================================================================
-        const apiKey = "MY_API_KEY"; // Provided automatically at runtime
+        const runtimeApiKey = ""; // Leave empty so GitHub never revokes a key; runtime or localStorage provides it
+        const API_KEY_STORAGE_KEY = "doctor_ai_gemini_api_key";
         const GEMINI_MODEL = "gemini-3-flash-preview";
-        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
+        const OVERPASS_MIRRORS = [
+            "https://overpass-api.de/api/interpreter",
+            "https://overpass.kumi.systems/api/interpreter"
+        ];
 
         const state = {
             imageBase64: null,
@@ -645,6 +767,8 @@
             lastReport: null,
             cameraStream: null,
             activeNearbyTab: "hospitals",
+            mapVisible: true,
+            lastNearbySearch: null, // { lat, lng, label, rawQuery }
             nearbyData: {
                 hospitals: [],
                 pharmacies: []
@@ -656,6 +780,18 @@
         // =========================================================================
         const els = {
             toastContainer: document.getElementById("toastContainer"),
+            openApiKeyModalBtn: document.getElementById("openApiKeyModalBtn"),
+            apiKeyStatusBadge: document.getElementById("apiKeyStatusBadge"),
+            apiKeyModal: document.getElementById("apiKeyModal"),
+            closeApiKeyModalBtn: document.getElementById("closeApiKeyModalBtn"),
+            apiKeyPromptText: document.getElementById("apiKeyPromptText"),
+            apiKeyInput: document.getElementById("apiKeyInput"),
+            toggleApiKeyVisibilityBtn: document.getElementById("toggleApiKeyVisibilityBtn"),
+            apiKeyFeedback: document.getElementById("apiKeyFeedback"),
+            saveApiKeyBtn: document.getElementById("saveApiKeyBtn"),
+            testApiKeyBtn: document.getElementById("testApiKeyBtn"),
+            clearApiKeyBtn: document.getElementById("clearApiKeyBtn"),
+
             dropZone: document.getElementById("dropZone"),
             uploadPrompt: document.getElementById("uploadPrompt"),
             previewWrapper: document.getElementById("previewWrapper"),
@@ -710,9 +846,155 @@
             pharmacyCountBadge: document.getElementById("pharmacyCountBadge"),
             nearbyEmptyState: document.getElementById("nearbyEmptyState"),
             nearbyLoadingState: document.getElementById("nearbyLoadingState"),
+            nearbyLoadingText: document.getElementById("nearbyLoadingText"),
+            nearbyNoResultsState: document.getElementById("nearbyNoResultsState"),
+            nearbyNoResultsTitle: document.getElementById("nearbyNoResultsTitle"),
+            nearbyNoResultsDesc: document.getElementById("nearbyNoResultsDesc"),
+            retryNearbyBtn: document.getElementById("retryNearbyBtn"),
             hospitalsGrid: document.getElementById("hospitalsGrid"),
-            pharmaciesGrid: document.getElementById("pharmaciesGrid")
+            pharmaciesGrid: document.getElementById("pharmaciesGrid"),
+            nearbyMapContainer: document.getElementById("nearbyMapContainer"),
+            embeddedMapTitle: document.getElementById("embeddedMapTitle"),
+            toggleMapBtn: document.getElementById("toggleMapBtn"),
+            embeddedMapBody: document.getElementById("embeddedMapBody"),
+            nearbyMapIframe: document.getElementById("nearbyMapIframe")
         };
+
+        // =========================================================================
+        // GITHUB-SAFE API KEY MANAGEMENT (LOCALSTORAGE)
+        // =========================================================================
+
+        function getSavedApiKey() {
+            try {
+                return (localStorage.getItem(API_KEY_STORAGE_KEY) || "").trim();
+            } catch (e) {
+                return "";
+            }
+        }
+
+        function getActiveApiKey() {
+            return getSavedApiKey() || runtimeApiKey;
+        }
+
+        function isStandaloneHost() {
+            const host = window.location.hostname;
+            return (
+                window.location.protocol === "file:" ||
+                host === "localhost" ||
+                host === "127.0.0.1" ||
+                host.endsWith(".github.io")
+            );
+        }
+
+        function updateApiKeyBadge() {
+            const hasKey = Boolean(getSavedApiKey());
+            if (hasKey) {
+                els.apiKeyStatusBadge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+                els.apiKeyStatusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Connected`;
+            } else {
+                els.apiKeyStatusBadge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200";
+                els.apiKeyStatusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Add Key`;
+            }
+        }
+
+        function setApiKeyFeedback(message, type = "info") {
+            const styles = {
+                success: "bg-emerald-50 text-emerald-800 border-emerald-200",
+                error: "bg-rose-50 text-rose-800 border-rose-200",
+                info: "bg-sky-50 text-sky-800 border-sky-200"
+            };
+            els.apiKeyFeedback.className = `rounded-xl px-3.5 py-2.5 text-xs font-semibold border ${styles[type] || styles.info}`;
+            els.apiKeyFeedback.textContent = message;
+            els.apiKeyFeedback.classList.remove("hidden");
+        }
+
+        function openApiKeyModal(customPrompt = null) {
+            els.apiKeyInput.value = getSavedApiKey();
+            els.apiKeyInput.type = "password";
+            els.apiKeyFeedback.classList.add("hidden");
+            if (customPrompt) {
+                els.apiKeyPromptText.textContent = customPrompt;
+            } else {
+                els.apiKeyPromptText.innerHTML = `Enter your Google Gemini API key to enable AI wound scanning. Your key is saved strictly in your browser's <code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-[11px]">localStorage</code> — it is never hardcoded or uploaded to GitHub.`;
+            }
+            els.apiKeyModal.classList.remove("hidden");
+            setTimeout(() => els.apiKeyInput.focus(), 50);
+        }
+
+        function closeApiKeyModal() {
+            els.apiKeyModal.classList.add("hidden");
+        }
+
+        els.openApiKeyModalBtn.addEventListener("click", () => openApiKeyModal());
+        els.closeApiKeyModalBtn.addEventListener("click", closeApiKeyModal);
+        els.apiKeyModal.addEventListener("click", (e) => {
+            if (e.target === els.apiKeyModal) closeApiKeyModal();
+        });
+
+        els.toggleApiKeyVisibilityBtn.addEventListener("click", () => {
+            els.apiKeyInput.type = els.apiKeyInput.type === "password" ? "text" : "password";
+        });
+
+        els.saveApiKeyBtn.addEventListener("click", () => {
+            const key = els.apiKeyInput.value.trim();
+            if (!key) {
+                setApiKeyFeedback("Please paste a valid Gemini API key before saving.", "error");
+                return;
+            }
+            try {
+                localStorage.setItem(API_KEY_STORAGE_KEY, key);
+                updateApiKeyBadge();
+                setApiKeyFeedback("API key saved to your browser!", "success");
+                showToast("Gemini API key saved locally.", "success");
+                setTimeout(closeApiKeyModal, 700);
+            } catch (e) {
+                setApiKeyFeedback("Browser storage is blocked. Enable localStorage to save your key.", "error");
+            }
+        });
+
+        els.clearApiKeyBtn.addEventListener("click", () => {
+            try {
+                localStorage.removeItem(API_KEY_STORAGE_KEY);
+            } catch (e) { /* ignore */ }
+            els.apiKeyInput.value = "";
+            updateApiKeyBadge();
+            setApiKeyFeedback("Saved API key cleared from this browser.", "info");
+            showToast("API key cleared.", "info");
+        });
+
+        els.testApiKeyBtn.addEventListener("click", async () => {
+            const keyToTest = els.apiKeyInput.value.trim() || getActiveApiKey();
+            if (!keyToTest && isStandaloneHost()) {
+                setApiKeyFeedback("Please paste your Gemini API key first to test it.", "error");
+                return;
+            }
+            els.testApiKeyBtn.disabled = true;
+            setApiKeyFeedback("Testing connection to Google Gemini API...", "info");
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(keyToTest)}`;
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ role: "user", parts: [{ text: "Reply with OK" }] }]
+                    })
+                });
+                if (res.ok) {
+                    setApiKeyFeedback("Connection successful! Your Gemini API key is working.", "success");
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    const msg = errData?.error?.message || `HTTP ${res.status}`;
+                    setApiKeyFeedback(`Key test failed: ${msg}`, "error");
+                }
+            } catch (err) {
+                setApiKeyFeedback("Network error while testing API key. Check your internet connection.", "error");
+            } finally {
+                els.testApiKeyBtn.disabled = false;
+            }
+        });
+
+        // Initialize badge on page load
+        updateApiKeyBadge();
 
         // =========================================================================
         // UTILITIES: TOASTS, HTML ESCAPING, IMAGE COMPRESSION, EXPONENTIAL BACKOFF
@@ -790,10 +1072,13 @@
          * Fetch wrapper with exponential backoff for Gemini API throttling/transient errors.
          */
         async function fetchGeminiWithBackoff(payload, maxRetries = 4) {
+            const activeKey = getActiveApiKey();
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(activeKey)}`;
             let delay = 1000;
+
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
-                    const response = await fetch(GEMINI_API_URL, {
+                    const response = await fetch(apiUrl, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(payload)
@@ -811,8 +1096,13 @@
                     }
 
                     const errorText = await response.text();
-                    throw new Error(`API request failed (${response.status}): ${errorText}`);
+                    const err = new Error(`API request failed (${response.status}): ${errorText}`);
+                    err.status = response.status;
+                    throw err;
                 } catch (err) {
+                    if (err.status && err.status >= 400 && err.status < 500 && err.status !== 429) {
+                        throw err;
+                    }
                     if (attempt < maxRetries) {
                         await new Promise(r => setTimeout(r, delay));
                         delay *= 2;
@@ -991,6 +1281,12 @@
                 return;
             }
 
+            // On standalone hosts (localhost / GitHub Pages), prompt cleanly if no key is saved yet
+            if (!getActiveApiKey() && isStandaloneHost()) {
+                openApiKeyModal("To analyze wounds with Google Gemini Vision, please add your free Gemini API key below. It stays safely in your browser.");
+                return;
+            }
+
             // Set scanning UI states
             els.analyzeBtn.disabled = true;
             els.analyzeBtnText.textContent = "Scanning Wound...";
@@ -1083,7 +1379,12 @@
                 console.error("Wound analysis error:", err);
                 els.reportLoadingState.classList.add("hidden");
                 els.reportEmptyState.classList.remove("hidden");
-                showToast("Could not analyze the wound right now. Please try again.", "error");
+                if (err.status === 400 || err.status === 401 || err.status === 403) {
+                    openApiKeyModal("Your Gemini API key appears missing or invalid. Please paste a valid key from Google AI Studio and try again.");
+                    showToast("Please check your Gemini API key in Settings.", "warning");
+                } else {
+                    showToast("Could not analyze the wound right now. Please try again.", "error");
+                }
             } finally {
                 els.scanningOverlay.classList.add("hidden");
                 els.analyzeBtn.disabled = false;
@@ -1233,6 +1534,8 @@
         // =========================================================================
         // NEAREST HOSPITALS & MEDICAL SHOPS (GEOLOCATION + GEMINI SEARCH GROUNDING)
         // =========================================================================
+        // NEAREST HOSPITALS & MEDICAL SHOPS (KEYLESS OPENSTREETMAP + LIVE MAP)
+        // =========================================================================
 
         function updateMapsLinks(locationQuery, coords = null) {
             if (coords) {
@@ -1250,10 +1553,266 @@
             }
         }
 
+        /**
+         * Updates the embedded live Google Maps preview iframe for the active tab.
+         */
+        function updateEmbeddedMap() {
+            if (!state.lastNearbySearch) return;
+            const { lat, lng, label, rawQuery } = state.lastNearbySearch;
+            const isHospitals = state.activeNearbyTab === "hospitals";
+            const placeTerm = isHospitals ? "hospitals" : "pharmacy medical shop";
+            const locText = rawQuery || label || `${lat},${lng}`;
+
+            els.embeddedMapTitle.textContent = isHospitals
+                ? `Live Map: Hospitals near ${label || locText}`
+                : `Live Map: Medical Shops & Pharmacies near ${label || locText}`;
+
+            const embedQuery = encodeURIComponent(`${placeTerm} near ${locText}`);
+            els.nearbyMapIframe.src = `https://maps.google.com/maps?q=${embedQuery}&z=13&output=embed`;
+            els.nearbyMapContainer.classList.remove("hidden");
+        }
+
+        els.toggleMapBtn.addEventListener("click", () => {
+            state.mapVisible = !state.mapVisible;
+            els.embeddedMapBody.classList.toggle("hidden", !state.mapVisible);
+            els.toggleMapBtn.textContent = state.mapVisible ? "Hide Map" : "Show Map";
+        });
+
+        /**
+         * Calculates exact Haversine distance in kilometers between two lat/lng points.
+         */
+        function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+            const toRad = (deg) => (deg * Math.PI) / 180;
+            const R = 6371;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        }
+
+        function formatDistance(km) {
+            if (typeof km !== "number" || Number.isNaN(km)) return "";
+            if (km < 1) return `${Math.max(50, Math.round(km * 1000))} m away`;
+            return `${km.toFixed(1)} km away`;
+        }
+
+        /**
+         * Fetch with AbortController timeout so slow mirrors never hang the UI.
+         */
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 11000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                return await fetch(url, { ...options, signal: controller.signal });
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        /**
+         * Extracts a clean human-readable locality name from a Nominatim result.
+         */
+        function formatNominatimArea(item, fallbackQuery) {
+            const addr = item?.address || {};
+            const primary = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state_district;
+            const stateName = addr.state;
+            if (primary && stateName) return `${primary}, ${stateName}`;
+            if (primary) return primary;
+            if (item?.display_name) {
+                return item.display_name.split(",").slice(0, 2).join(",").trim();
+            }
+            return fallbackQuery;
+        }
+
+        /**
+         * Geocodes a user query (including 6-digit Indian pincodes like 827013) via Nominatim.
+         */
+        async function geocodeLocation(rawQuery) {
+            const trimmed = rawQuery.trim();
+            const isIndianPincode = /^\d{6}$/.test(trimmed);
+
+            const urlsToTry = [];
+            if (isIndianPincode) {
+                urlsToTry.push(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&postalcode=${encodeURIComponent(trimmed)}&country=India`);
+                urlsToTry.push(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(trimmed + ", India")}`);
+            } else {
+                urlsToTry.push(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(trimmed)}`);
+                if (!/india/i.test(trimmed)) {
+                    urlsToTry.push(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(trimmed + ", India")}`);
+                }
+            }
+
+            for (const url of urlsToTry) {
+                try {
+                    const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } }, 9000);
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        const hit = data[0];
+                        return {
+                            lat: parseFloat(hit.lat),
+                            lng: parseFloat(hit.lon),
+                            label: formatNominatimArea(hit, trimmed)
+                        };
+                    }
+                } catch (err) {
+                    // Try next fallback URL
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Reverse geocodes GPS coordinates to a readable city/locality name.
+         */
+        async function reverseGeocode(lat, lng) {
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}`;
+                const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } }, 7000);
+                if (!res.ok) return null;
+                const data = await res.json();
+                return formatNominatimArea(data, `${lat.toFixed(3)}, ${lng.toFixed(3)}`);
+            } catch (err) {
+                return null;
+            }
+        }
+
+        /**
+         * Queries Overpass API across mirrors with automatic fallback.
+         */
+        async function queryOverpassMirrors(overpassQuery) {
+            for (const mirrorUrl of OVERPASS_MIRRORS) {
+                try {
+                    const res = await fetchWithTimeout(
+                        mirrorUrl,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                            body: `data=${encodeURIComponent(overpassQuery)}`
+                        },
+                        12000
+                    );
+                    if (!res.ok) continue;
+                    const json = await res.json();
+                    if (json && Array.isArray(json.elements)) {
+                        return json.elements;
+                    }
+                } catch (err) {
+                    // Fall through to next mirror
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Parses, categorizes, deduplicates, and sorts Overpass elements into hospitals & pharmacies.
+         */
+        function parseOverpassFacilities(elements, originLat, originLng, fallbackArea) {
+            const hospitalsMap = new Map();
+            const pharmaciesMap = new Map();
+
+            for (const el of elements) {
+                const tags = el.tags || {};
+                const name = (tags.name || tags["name:en"] || "").trim();
+                if (!name) continue;
+
+                const lat = el.lat ?? el.center?.lat;
+                const lng = el.lon ?? el.center?.lon;
+                if (typeof lat !== "number" || typeof lng !== "number") continue;
+
+                const distanceKm = calculateDistanceKm(originLat, originLng, lat, lng);
+
+                const addressParts = [
+                    tags["addr:housenumber"],
+                    tags["addr:street"],
+                    tags["addr:suburb"] || tags["addr:neighbourhood"],
+                    tags["addr:city"] || tags["addr:town"] || tags["addr:village"],
+                    tags["addr:postcode"]
+                ].filter(Boolean);
+                const address = addressParts.length > 0 ? addressParts.join(", ") : (tags["addr:full"] || fallbackArea);
+
+                const phone = (tags.phone || tags["contact:phone"] || tags["phone:mobile"] || "").split(";")[0].trim();
+                const hours = (tags.opening_hours || "").trim();
+
+                const isPharmacy =
+                    tags.amenity === "pharmacy" ||
+                    tags.shop === "chemist" ||
+                    tags.healthcare === "pharmacy";
+
+                const isHospital =
+                    tags.amenity === "hospital" ||
+                    tags.amenity === "clinic" ||
+                    tags.amenity === "doctors" ||
+                    tags.healthcare === "hospital" ||
+                    tags.healthcare === "clinic";
+
+                const normKey = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+                if (isPharmacy) {
+                    const entry = {
+                        name,
+                        category: "Pharmacy",
+                        address,
+                        phone,
+                        hours,
+                        lat,
+                        lng,
+                        distanceKm
+                    };
+                    const existing = pharmaciesMap.get(normKey);
+                    if (!existing || distanceKm < existing.distanceKm) {
+                        pharmaciesMap.set(normKey, entry);
+                    }
+                } else if (isHospital) {
+                    let category = "Hospital";
+                    if (tags.emergency === "yes") category = "Emergency";
+                    else if (tags.amenity === "clinic" || tags.healthcare === "clinic" || tags.amenity === "doctors") category = "Clinic";
+
+                    const entry = {
+                        name,
+                        category,
+                        address,
+                        phone,
+                        hours,
+                        lat,
+                        lng,
+                        distanceKm
+                    };
+                    const existing = hospitalsMap.get(normKey);
+                    if (!existing || distanceKm < existing.distanceKm) {
+                        hospitalsMap.set(normKey, entry);
+                    }
+                }
+            }
+
+            const hospitals = Array.from(hospitalsMap.values())
+                .sort((a, b) => a.distanceKm - b.distanceKm)
+                .slice(0, 12);
+
+            const pharmacies = Array.from(pharmaciesMap.values())
+                .sort((a, b) => a.distanceKm - b.distanceKm)
+                .slice(0, 12);
+
+            return { hospitals, pharmacies };
+        }
+
+        function buildOverpassQuery(lat, lng, radiusMeters) {
+            return `[out:json][timeout:12];
+(
+  nwr["amenity"~"^(hospital|clinic|doctors|pharmacy)$"](around:${radiusMeters},${lat},${lng});
+  nwr["healthcare"~"^(hospital|clinic|pharmacy)$"](around:${radiusMeters},${lat},${lng});
+  nwr["shop"="chemist"](around:${radiusMeters},${lat},${lng});
+);
+out center tags;`;
+        }
+
         // Geolocation button
         els.useLocationBtn.addEventListener("click", () => {
             if (!navigator.geolocation) {
-                showToast("Geolocation is not supported by your browser. Please enter your city manually.", "warning");
+                showToast("Geolocation is not supported by your browser. Please enter your city or pincode.", "warning");
                 els.locationInput.focus();
                 return;
             }
@@ -1262,12 +1821,13 @@
             showToast("Detecting your current location...", "info");
 
             navigator.geolocation.getCurrentPosition(
-                (position) => {
+                async (position) => {
                     els.useLocationBtn.disabled = false;
-                    const lat = position.coords.latitude.toFixed(5);
-                    const lng = position.coords.longitude.toFixed(5);
-                    updateMapsLinks(null, { lat, lng });
-                    fetchNearbyMedicalHelp(`coordinates ${lat}, ${lng}`, { lat, lng });
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    updateMapsLinks(null, { lat: lat.toFixed(5), lng: lng.toFixed(5) });
+                    const resolvedName = (await reverseGeocode(lat, lng)) || "your current location";
+                    fetchNearbyOpenStreetMap(lat, lng, resolvedName, `${lat.toFixed(4)},${lng.toFixed(4)}`);
                 },
                 () => {
                     els.useLocationBtn.disabled = false;
@@ -1278,17 +1838,50 @@
             );
         });
 
-        // Manual location search
-        els.manualLocationForm.addEventListener("submit", (e) => {
+        // Manual location / pincode search
+        els.manualLocationForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const city = els.locationInput.value.trim();
-            if (!city) {
-                showToast("Please enter a city, neighborhood, or pincode.", "warning");
+            const query = els.locationInput.value.trim();
+            if (!query) {
+                showToast("Please enter a city, neighborhood, or 6-digit pincode.", "warning");
                 els.locationInput.focus();
                 return;
             }
-            updateMapsLinks(city, null);
-            fetchNearbyMedicalHelp(city, null);
+
+            updateMapsLinks(query, null);
+            els.nearbyEmptyState.classList.add("hidden");
+            els.nearbyNoResultsState.classList.add("hidden");
+            els.hospitalsGrid.classList.add("hidden");
+            els.pharmaciesGrid.classList.add("hidden");
+            els.nearbyLoadingText.textContent = `Resolving location for "${query}"...`;
+            els.nearbyLoadingState.classList.remove("hidden");
+
+            const geo = await geocodeLocation(query);
+            if (!geo) {
+                // Still show embedded live Google Maps preview even if Nominatim couldn't geocode
+                state.lastNearbySearch = { lat: null, lng: null, label: query, rawQuery: query };
+                state.nearbyData = { hospitals: [], pharmacies: [] };
+                els.nearbyLoadingState.classList.add("hidden");
+                els.nearbyNoResultsTitle.textContent = `Could not resolve exact coordinates for "${query}"`;
+                els.nearbyNoResultsDesc.textContent = "Showing live Google Maps results below. Try adding your city name alongside the pincode.";
+                els.nearbyNoResultsState.classList.remove("hidden");
+                updateEmbeddedMap();
+                showToast(`Opened live map preview for "${query}".`, "info");
+                return;
+            }
+
+            els.activeLocationLabel.textContent = `Showing medical help near ${geo.label} (${query})`;
+            await fetchNearbyOpenStreetMap(geo.lat, geo.lng, geo.label, query);
+        });
+
+        // Retry button
+        els.retryNearbyBtn.addEventListener("click", () => {
+            if (state.lastNearbySearch && state.lastNearbySearch.lat !== null) {
+                const { lat, lng, label, rawQuery } = state.lastNearbySearch;
+                fetchNearbyOpenStreetMap(lat, lng, label, rawQuery);
+            } else if (els.locationInput.value.trim()) {
+                els.manualLocationForm.requestSubmit();
+            }
         });
 
         // Switch Nearby Tabs
@@ -1306,9 +1899,22 @@
             els.tabPharmacies.classList.toggle("border-transparent", isHospitals);
             els.tabPharmacies.classList.toggle("text-slate-500", isHospitals);
 
-            if (state.nearbyData.hospitals.length > 0 || state.nearbyData.pharmacies.length > 0) {
-                els.hospitalsGrid.classList.toggle("hidden", !isHospitals);
-                els.pharmaciesGrid.classList.toggle("hidden", isHospitals);
+            if (state.lastNearbySearch) {
+                const activeList = isHospitals ? state.nearbyData.hospitals : state.nearbyData.pharmacies;
+                els.hospitalsGrid.classList.toggle("hidden", !isHospitals || state.nearbyData.hospitals.length === 0);
+                els.pharmaciesGrid.classList.toggle("hidden", isHospitals || state.nearbyData.pharmacies.length === 0);
+
+                if (activeList.length === 0) {
+                    els.nearbyNoResultsTitle.textContent = isHospitals
+                        ? `No hospital directory cards returned near ${state.lastNearbySearch.label}`
+                        : `No pharmacy directory cards returned near ${state.lastNearbySearch.label}`;
+                    els.nearbyNoResultsDesc.textContent = "Browse all nearby locations on the live map below or click Retry Listings.";
+                    els.nearbyNoResultsState.classList.remove("hidden");
+                } else {
+                    els.nearbyNoResultsState.classList.add("hidden");
+                }
+
+                updateEmbeddedMap();
             }
         }
 
@@ -1316,75 +1922,56 @@
         els.tabPharmacies.addEventListener("click", () => setActiveNearbyTab("pharmacies"));
 
         /**
-         * Uses Gemini API with Google Search grounding to retrieve well-known nearby hospitals and medical shops.
+         * Fetches real nearby hospitals and medical shops via Overpass API with automatic radius expansion.
+         * Skeleton loading state is ALWAYS cleared in the finally block.
          */
-        async function fetchNearbyMedicalHelp(locationDescription, coords) {
+        async function fetchNearbyOpenStreetMap(lat, lng, areaLabel, rawQuery) {
+            state.lastNearbySearch = { lat, lng, label: areaLabel, rawQuery };
+
             els.nearbyEmptyState.classList.add("hidden");
+            els.nearbyNoResultsState.classList.add("hidden");
             els.hospitalsGrid.classList.add("hidden");
             els.pharmaciesGrid.classList.add("hidden");
+            els.nearbyLoadingText.textContent = `Searching hospitals & medical shops within 6 km of ${areaLabel}...`;
             els.nearbyLoadingState.classList.remove("hidden");
 
-            const prompt = `Find well-known hospitals (with emergency care) and popular medical shops / pharmacy chains near ${locationDescription}.
-Return ONLY a valid raw JSON object (no markdown fences, no extra text) with this exact structure:
-{
-  "area_name": "Short readable city/area name",
-  "hospitals": [
-    {
-      "name": "Hospital Name",
-      "specialty": "e.g., Multi-specialty & 24/7 Emergency",
-      "address": "Short area or street address",
-      "hours": "e.g., Open 24 Hours"
-    }
-  ],
-  "pharmacies": [
-    {
-      "name": "Pharmacy / Medical Shop Name",
-      "type": "e.g., 24/7 Pharmacy & First-Aid Supplies",
-      "address": "Short area or street address",
-      "hours": "e.g., Open 24 Hours or 8 AM - 11 PM"
-    }
-  ]
-}
-Provide 4 to 6 real, well-known hospitals and 4 to 6 real medical shops/pharmacies for that area.`;
-
-            const payload = {
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                tools: [{ google_search: {} }]
-            };
+            // Show live embedded map immediately so the user gets instant visual feedback
+            updateEmbeddedMap();
 
             try {
-                const result = await fetchGeminiWithBackoff(payload);
-                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                let elements = await queryOverpassMirrors(buildOverpassQuery(lat, lng, 6000));
+                let parsed = elements ? parseOverpassFacilities(elements, lat, lng, areaLabel) : { hospitals: [], pharmacies: [] };
 
-                // Safely extract JSON from response (in case model wraps in markdown fences)
-                const jsonMatch = text.match(/\{[\s\S]*\}/);
-                if (!jsonMatch) {
-                    throw new Error("Could not parse nearby places JSON.");
+                // Auto-expand search radius to 15 km if fewer than 3 hospitals or pharmacies found
+                if (parsed.hospitals.length < 3 || parsed.pharmacies.length < 3) {
+                    els.nearbyLoadingText.textContent = `Expanding search radius to 15 km around ${areaLabel}...`;
+                    const widerElements = await queryOverpassMirrors(buildOverpassQuery(lat, lng, 15000));
+                    if (widerElements) {
+                        parsed = parseOverpassFacilities(widerElements, lat, lng, areaLabel);
+                    }
                 }
 
-                const parsed = JSON.parse(jsonMatch[0]);
-                const areaName = parsed.area_name || locationDescription;
+                state.nearbyData = parsed;
+                renderNearbyCards(areaLabel);
 
-                if (coords && parsed.area_name) {
-                    els.activeLocationLabel.textContent = `Showing nearby medical help around ${parsed.area_name}`;
+                const totalFound = parsed.hospitals.length + parsed.pharmacies.length;
+                if (totalFound > 0) {
+                    showToast(`Found ${parsed.hospitals.length} hospitals & ${parsed.pharmacies.length} medical shops near ${areaLabel}.`, "success");
+                } else {
+                    showToast("Directory busy — live Google Maps preview is ready below.", "info");
                 }
-
-                state.nearbyData.hospitals = Array.isArray(parsed.hospitals) ? parsed.hospitals : [];
-                state.nearbyData.pharmacies = Array.isArray(parsed.pharmacies) ? parsed.pharmacies : [];
-
-                renderNearbyCards(areaName);
-                showToast(`Found nearby hospitals & medical shops for ${areaName}.`, "success");
             } catch (err) {
-                console.error("Nearby lookup error:", err);
+                console.error("Nearby OpenStreetMap error:", err);
+                state.nearbyData = { hospitals: [], pharmacies: [] };
+                renderNearbyCards(areaLabel);
+                showToast("Directory temporarily unavailable — live Google Maps preview is ready below.", "warning");
+            } finally {
+                // Guarantee skeleton cards are NEVER stuck visible
                 els.nearbyLoadingState.classList.add("hidden");
-                els.nearbyEmptyState.classList.remove("hidden");
-                showToast("Could not fetch local listings, but Google Maps shortcuts above are ready!", "warning");
             }
         }
 
         function renderNearbyCards(areaName) {
-            els.nearbyLoadingState.classList.add("hidden");
-
             const hospitals = state.nearbyData.hospitals;
             const pharmacies = state.nearbyData.pharmacies;
 
@@ -1393,61 +1980,65 @@ Provide 4 to 6 real, well-known hospitals and 4 to 6 real medical shops/pharmaci
             els.pharmacyCountBadge.textContent = pharmacies.length;
             els.pharmacyCountBadge.classList.remove("hidden");
 
-            // Render Hospitals
-            els.hospitalsGrid.innerHTML = hospitals.map(h => {
-                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${h.name} ${h.address || areaName}`)}`;
-                return `
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-sky-300 hover:shadow-md transition p-4 flex flex-col justify-between gap-4">
-                        <div class="space-y-2">
-                            <div class="flex items-start justify-between gap-2">
-                                <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-snug">${escapeHtml(h.name)}</h3>
-                                <span class="shrink-0 px-2 py-0.5 rounded-lg bg-sky-100 text-sky-700 text-[10px] font-bold uppercase">Hospital</span>
-                            </div>
-                            <p class="text-xs font-medium text-sky-700">${escapeHtml(h.specialty || "General & Emergency Care")}</p>
-                            <p class="text-xs text-slate-500 leading-relaxed">${escapeHtml(h.address || areaName)}</p>
-                            <p class="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                ${escapeHtml(h.hours || "Open 24 Hours")}
-                            </p>
-                        </div>
-                        <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white hover:bg-sky-600 text-sky-700 hover:text-white border border-sky-200 hover:border-sky-600 text-xs font-bold transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                            </svg>
-                            Directions on Google Maps
-                        </a>
-                    </div>
-                `;
-            }).join("");
+            const categoryStyles = {
+                Hospital: "bg-sky-100 text-sky-700",
+                Emergency: "bg-rose-100 text-rose-700",
+                Clinic: "bg-indigo-100 text-indigo-700",
+                Pharmacy: "bg-emerald-100 text-emerald-700"
+            };
 
-            // Render Medical Shops / Pharmacies
-            els.pharmaciesGrid.innerHTML = pharmacies.map(p => {
-                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${p.address || areaName}`)}`;
+            const buildCard = (item, accent) => {
+                const badgeClass = categoryStyles[item.category] || "bg-sky-100 text-sky-700";
+                const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}&destination_place_id=&query=${encodeURIComponent(item.name)}`;
+                const btnHover = accent === "emerald"
+                    ? "text-emerald-700 hover:bg-emerald-600 hover:text-white border-emerald-200 hover:border-emerald-600"
+                    : "text-sky-700 hover:bg-sky-600 hover:text-white border-sky-200 hover:border-sky-600";
+
+                const phoneHtml = item.phone
+                    ? `<a href="tel:${escapeHtml(item.phone.replace(/[^+\d]/g, ""))}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-sky-700 transition">
+                            <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+                            ${escapeHtml(item.phone)}
+                       </a>`
+                    : "";
+
+                const hoursHtml = item.hours
+                    ? `<p class="text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span class="truncate">${escapeHtml(item.hours)}</span>
+                       </p>`
+                    : "";
+
                 return `
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-emerald-300 hover:shadow-md transition p-4 flex flex-col justify-between gap-4">
-                        <div class="space-y-2">
+                    <div class="rounded-2xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-md transition p-4 flex flex-col justify-between gap-4">
+                        <div class="space-y-2.5">
                             <div class="flex items-start justify-between gap-2">
-                                <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-snug">${escapeHtml(p.name)}</h3>
-                                <span class="shrink-0 px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase">Pharmacy</span>
+                                <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-snug">${escapeHtml(item.name)}</h3>
+                                <span class="shrink-0 px-2 py-0.5 rounded-lg ${badgeClass} text-[10px] font-bold uppercase tracking-wide">${escapeHtml(item.category)}</span>
                             </div>
-                            <p class="text-xs font-medium text-emerald-700">${escapeHtml(p.type || "Medical Shop & First-Aid Supplies")}</p>
-                            <p class="text-xs text-slate-500 leading-relaxed">${escapeHtml(p.address || areaName)}</p>
-                            <p class="text-[11px] font-semibold text-slate-600 flex items-center gap-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                ${escapeHtml(p.hours || "Check hours on Maps")}
-                            </p>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
+                                    <svg class="w-3 h-3 text-sky-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                                    ${escapeHtml(formatDistance(item.distanceKm))}
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-500 leading-relaxed">${escapeHtml(item.address || areaName)}</p>
+                            <div class="space-y-1">
+                                ${hoursHtml}
+                                ${phoneHtml}
+                            </div>
                         </div>
-                        <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 text-xs font-bold transition">
+                        <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white ${btnHover} border text-xs font-bold transition">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
                             </svg>
-                            Directions on Google Maps
+                            Get Directions
                         </a>
                     </div>
                 `;
-            }).join("");
+            };
+
+            els.hospitalsGrid.innerHTML = hospitals.map(h => buildCard(h, "sky")).join("");
+            els.pharmaciesGrid.innerHTML = pharmacies.map(p => buildCard(p, "emerald")).join("");
 
             setActiveNearbyTab(state.activeNearbyTab);
         }
