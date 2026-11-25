@@ -756,7 +756,7 @@
 
         const OVERPASS_MIRRORS = [
             "https://overpass-api.de/api/interpreter",
-            "https://overpass.kumi.systems/api/interpreter"
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
         ];
 
         const state = {
@@ -1001,687 +1001,7 @@
         // =========================================================================
 
         /**
-         * Displays a non-blocking toast notification.
-         */
-        function showToast(message, type = "info") {
-            const colors = {
-                info: "bg-slate-900 text-white border-slate-700",
-                success: "bg-emerald-700 text-white border-emerald-600",
-                error: "bg-rose-600 text-white border-rose-500",
-                warning: "bg-amber-600 text-white border-amber-500"
-            };
-            const toast = document.createElement("div");
-            toast.className = `pointer-events-auto px-4 py-3 rounded-2xl border shadow-lg text-xs sm:text-sm font-medium flex items-center justify-between gap-3 transition-all duration-300 ${colors[type] || colors.info}`;
-            toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
-            els.toastContainer.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.add("opacity-0", "translate-y-2");
-                setTimeout(() => toast.remove(), 300);
-            }, 3800);
-        }
-
-        /**
-         * Escapes HTML special characters to safely render dynamic strings.
-         */
-        function escapeHtml(str) {
-            if (typeof str !== "string") return "";
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        /**
-         * Resizes and compresses an image file or canvas to keep Gemini API payloads fast and reliable.
-         */
-        function compressImageToJpeg(imgSource, maxDim = 1024, quality = 0.85) {
-            return new Promise((resolve, reject) => {
-                try {
-                    const canvas = document.createElement("canvas");
-                    let width = imgSource.naturalWidth || imgSource.videoWidth || imgSource.width;
-                    let height = imgSource.naturalHeight || imgSource.videoHeight || imgSource.height;
-
-                    if (width > maxDim || height > maxDim) {
-                        if (width > height) {
-                            height = Math.round((height * maxDim) / width);
-                            width = maxDim;
-                        } else {
-                            width = Math.round((width * maxDim) / height);
-                            height = maxDim;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(imgSource, 0, 0, width, height);
-
-                    const dataUrl = canvas.toDataURL("image/jpeg", quality);
-                    const base64 = dataUrl.split(",")[1];
-                    resolve({ dataUrl, base64, mimeType: "image/jpeg" });
-                } catch (err) {
-                    reject(err);
-                }
-            });
-        }
-
-        /**
-         * Fetch wrapper with exponential backoff for Gemini API throttling/transient errors.
-         */
-        async function fetchGeminiWithBackoff(payload, maxRetries = 4) {
-            const activeKey = getActiveApiKey();
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(activeKey)}`;
-            let delay = 1000;
-
-            for (let attempt = 0; attempt <= maxRetries; attempt++) {
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.ok) {
-                        return await response.json();
-                    }
-
-                    // Retry on rate limit or server errors
-                    if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
-                        await new Promise(r => setTimeout(r, delay));
-                        delay *= 2;
-                        continue;
-                    }
-
-                    const errorText = await response.text();
-                    const err = new Error(`API request failed (${response.status}): ${errorText}`);
-                    err.status = response.status;
-                    throw err;
-                } catch (err) {
-                    if (err.status && err.status >= 400 && err.status < 500 && err.status !== 429) {
-                        throw err;
-                    }
-                    if (attempt < maxRetries) {
-                        await new Promise(r => setTimeout(r, delay));
-                        delay *= 2;
-                        continue;
-                    }
-                    throw err;
-                }
-            }
-        }
-
-        // =========================================================================
-        // IMAGE UPLOAD, DRAG-AND-DROP & CAMERA CAPTURE
-        // =========================================================================
-
-        function handleFileSelection(file) {
-            if (!file) return;
-            if (!file.type.startsWith("image/")) {
-                showToast("Please select a valid image file (JPG, PNG, or WEBP).", "error");
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = async () => {
-                    try {
-                        const compressed = await compressImageToJpeg(img);
-                        setSelectedImage(compressed.dataUrl, compressed.base64, compressed.mimeType, file.name);
-                    } catch (err) {
-                        showToast("Could not process this image. Please try another photo.", "error");
-                    }
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function setSelectedImage(dataUrl, base64, mimeType, fileName) {
-            state.imageDataUrl = dataUrl;
-            state.imageBase64 = base64;
-            state.imageMimeType = mimeType;
-
-            els.woundPreviewImg.src = dataUrl;
-            els.fileNameLabel.textContent = fileName || "captured-wound.jpg";
-            els.uploadPrompt.classList.add("hidden");
-            els.previewWrapper.classList.remove("hidden");
-            els.dropZone.classList.remove("border-dashed");
-            els.dropZone.classList.add("border-solid", "border-sky-300");
-            els.analyzeBtn.disabled = false;
-        }
-
-        function clearSelectedImage() {
-            state.imageDataUrl = null;
-            state.imageBase64 = null;
-            els.fileInput.value = "";
-            els.mobileCameraInput.value = "";
-            els.woundPreviewImg.src = "";
-            els.previewWrapper.classList.add("hidden");
-            els.uploadPrompt.classList.remove("hidden");
-            els.dropZone.classList.add("border-dashed");
-            els.dropZone.classList.remove("border-solid", "border-sky-300");
-            els.analyzeBtn.disabled = true;
-        }
-
-        // File Picker Triggers
-        els.chooseFileBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            els.fileInput.click();
-        });
-        els.uploadPrompt.addEventListener("click", () => els.fileInput.click());
-        els.changePhotoBtn.addEventListener("click", () => els.fileInput.click());
-        els.removePhotoBtn.addEventListener("click", clearSelectedImage);
-
-        els.fileInput.addEventListener("change", (e) => {
-            if (e.target.files?.[0]) handleFileSelection(e.target.files[0]);
-        });
-        els.mobileCameraInput.addEventListener("change", (e) => {
-            if (e.target.files?.[0]) handleFileSelection(e.target.files[0]);
-        });
-
-        // Drag and Drop Events
-        ["dragenter", "dragover"].forEach(evtName => {
-            els.dropZone.addEventListener(evtName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                els.dropZone.classList.add("border-sky-500", "bg-sky-50/70");
-            });
-        });
-        ["dragleave", "drop"].forEach(evtName => {
-            els.dropZone.addEventListener(evtName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                els.dropZone.classList.remove("border-sky-500", "bg-sky-50/70");
-            });
-        });
-        els.dropZone.addEventListener("drop", (e) => {
-            const file = e.dataTransfer?.files?.[0];
-            if (file) handleFileSelection(file);
-        });
-
-        // Live Camera Modal
-        async function openLiveCamera() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                els.mobileCameraInput.click();
-                return;
-            }
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 960 } },
-                    audio: false
-                });
-                state.cameraStream = stream;
-                els.cameraVideo.srcObject = stream;
-                els.cameraModal.classList.remove("hidden");
-            } catch (err) {
-                // Gracefully fall back to native file/camera picker if permission denied or no webcam
-                showToast("Camera access unavailable. Opening device photo picker instead.", "info");
-                els.mobileCameraInput.click();
-            }
-        }
-
-        function closeLiveCamera() {
-            if (state.cameraStream) {
-                state.cameraStream.getTracks().forEach(track => track.stop());
-                state.cameraStream = null;
-            }
-            els.cameraVideo.srcObject = null;
-            els.cameraModal.classList.add("hidden");
-        }
-
-        els.openCameraBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            openLiveCamera();
-        });
-        els.closeCameraModalBtn.addEventListener("click", closeLiveCamera);
-        els.fallbackFileCameraBtn.addEventListener("click", () => {
-            closeLiveCamera();
-            els.mobileCameraInput.click();
-        });
-        els.capturePhotoBtn.addEventListener("click", async () => {
-            try {
-                const compressed = await compressImageToJpeg(els.cameraVideo);
-                setSelectedImage(compressed.dataUrl, compressed.base64, compressed.mimeType, "camera-wound-scan.jpg");
-                closeLiveCamera();
-                showToast("Photo captured! Ready to analyze.", "success");
-            } catch (err) {
-                showToast("Unable to capture photo. Please try again.", "error");
-            }
-        });
-
-        // Quick-Select Context Chips
-        els.contextChips.addEventListener("click", (e) => {
-            const btn = e.target.closest(".chip-btn");
-            if (!btn) return;
-            const value = btn.dataset.chip;
-            if (state.selectedChips.has(value)) {
-                state.selectedChips.delete(value);
-                btn.classList.remove("bg-sky-600", "text-white", "border-sky-600", "shadow-sm");
-                btn.classList.add("bg-slate-50", "text-slate-700", "border-slate-200");
-            } else {
-                state.selectedChips.add(value);
-                btn.classList.remove("bg-slate-50", "text-slate-700", "border-slate-200");
-                btn.classList.add("bg-sky-600", "text-white", "border-sky-600", "shadow-sm");
-            }
-        });
-
-        // =========================================================================
-        // GEMINI API: MULTIMODAL WOUND ANALYSIS
-        // =========================================================================
-
-        els.analyzeBtn.addEventListener("click", analyzeWound);
-
-        async function analyzeWound() {
-            if (!state.imageBase64) {
-                showToast("Please upload or capture a wound image first.", "warning");
-                return;
-            }
-
-            // On standalone hosts (localhost / GitHub Pages), prompt cleanly if no key is saved yet
-            if (!getActiveApiKey() && isStandaloneHost()) {
-                openApiKeyModal("To analyze wounds with Google Gemini Vision, please add your free Gemini API key below. It stays safely in your browser.");
-                return;
-            }
-
-            // Set scanning UI states
-            els.analyzeBtn.disabled = true;
-            els.analyzeBtnText.textContent = "Scanning Wound...";
-            els.scanningOverlay.classList.remove("hidden");
-            els.reportEmptyState.classList.add("hidden");
-            els.reportResultCard.classList.add("hidden");
-            els.reportLoadingState.classList.remove("hidden");
-
-            const selectedTags = Array.from(state.selectedChips).join(", ");
-            const userNotes = els.woundNotes.value.trim();
-
-            const promptText = [
-                "You are Doctor AI, an empathetic, safety-first first-aid and wound care assistant.",
-                "Analyze the provided wound photo carefully along with any user-provided context.",
-                "Provide practical, evidence-based first-aid guidance and proper ongoing wound care instructions.",
-                "If the image does not appear to show a wound or skin injury, still return valid JSON politely explaining what is visible and advising the user to upload a clear photo of the injury.",
-                "Severity classification rules:",
-                "- 'Low': minor superficial cuts, scrapes, small blisters, or mild first-degree burns manageable at home.",
-                "- 'Moderate': deeper cuts, larger abrasions, partial burns, noticeable swelling, or wounds needing careful monitoring or clinic evaluation.",
-                "- 'High': deep lacerations, heavy bleeding, severe burns, animal bites, punctures, or visible signs of serious infection requiring urgent medical care.",
-                selectedTags ? `User selected quick context tags: ${selectedTags}` : "",
-                userNotes ? `User additional notes: ${userNotes}` : ""
-            ].filter(Boolean).join("\n");
-
-            const payload = {
-                contents: [
-                    {
-                        role: "user",
-                        parts: [
-                            { text: promptText },
-                            {
-                                inlineData: {
-                                    mimeType: state.imageMimeType,
-                                    data: state.imageBase64
-                                }
-                            }
-                        ]
-                    }
-                ],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            wound_type: { type: "STRING" },
-                            severity_level: { type: "STRING", enum: ["Low", "Moderate", "High"] },
-                            assessment_summary: { type: "STRING" },
-                            immediate_solution: {
-                                type: "ARRAY",
-                                items: { type: "STRING" }
-                            },
-                            ongoing_care: {
-                                type: "ARRAY",
-                                items: { type: "STRING" }
-                            },
-                            warning_signs: {
-                                type: "ARRAY",
-                                items: { type: "STRING" }
-                            },
-                            recommended_supplies: {
-                                type: "ARRAY",
-                                items: { type: "STRING" }
-                            }
-                        },
-                        required: [
-                            "wound_type",
-                            "severity_level",
-                            "assessment_summary",
-                            "immediate_solution",
-                            "ongoing_care",
-                            "warning_signs",
-                            "recommended_supplies"
-                        ]
-                    }
-                }
-            };
-
-            try {
-                const result = await fetchGeminiWithBackoff(payload);
-                const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!rawText) {
-                    throw new Error("Empty response from Gemini API.");
-                }
-
-                const parsedReport = JSON.parse(rawText);
-                state.lastReport = parsedReport;
-                renderWoundReport(parsedReport);
-                showToast("Wound analysis complete!", "success");
-            } catch (err) {
-                console.error("Wound analysis error:", err);
-                els.reportLoadingState.classList.add("hidden");
-                els.reportEmptyState.classList.remove("hidden");
-                if (err.status === 400 || err.status === 401 || err.status === 403) {
-                    openApiKeyModal("Your Gemini API key appears missing or invalid. Please paste a valid key from Google AI Studio and try again.");
-                    showToast("Please check your Gemini API key in Settings.", "warning");
-                } else {
-                    showToast("Could not analyze the wound right now. Please try again.", "error");
-                }
-            } finally {
-                els.scanningOverlay.classList.add("hidden");
-                els.analyzeBtn.disabled = false;
-                els.analyzeBtnText.textContent = "Analyze Wound with Doctor AI";
-            }
-        }
-
-        function renderWoundReport(report) {
-            els.reportLoadingState.classList.add("hidden");
-            els.reportEmptyState.classList.add("hidden");
-            els.reportResultCard.classList.remove("hidden");
-
-            // Thumbnail & Header
-            els.reportThumbnailImg.src = state.imageDataUrl;
-            els.reportWoundType.textContent = report.wound_type || "Wound Assessment";
-            els.reportSummary.textContent = report.assessment_summary || "";
-
-            // Color-coded severity badge
-            const severity = (report.severity_level || "Moderate").trim();
-            const badgeStyles = {
-                Low: {
-                    classes: "bg-emerald-50 text-emerald-700 border-emerald-200",
-                    dot: "bg-emerald-500",
-                    label: "Low Severity"
-                },
-                Moderate: {
-                    classes: "bg-amber-50 text-amber-800 border-amber-200",
-                    dot: "bg-amber-500",
-                    label: "Moderate Severity"
-                },
-                High: {
-                    classes: "bg-rose-50 text-rose-700 border-rose-200",
-                    dot: "bg-rose-600",
-                    label: "High Severity"
-                }
-            };
-            const style = badgeStyles[severity] || badgeStyles.Moderate;
-            els.severityBadge.className = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${style.classes}`;
-            els.severityBadge.innerHTML = `<span class="w-2 h-2 rounded-full ${style.dot}"></span>${style.label}`;
-
-            // Show urgent banner if High severity
-            if (severity === "High") {
-                els.highSeverityBanner.classList.remove("hidden");
-            } else {
-                els.highSeverityBanner.classList.add("hidden");
-            }
-
-            // 1. Immediate First-Aid Solution (Numbered)
-            const steps = Array.isArray(report.immediate_solution) ? report.immediate_solution : [];
-            els.immediateSolutionList.innerHTML = steps.map((step, index) => `
-                <li class="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">${index + 1}</span>
-                    <span class="text-sm text-slate-700 leading-relaxed">${escapeHtml(step)}</span>
-                </li>
-            `).join("");
-
-            // 2. Ongoing Care
-            const careItems = Array.isArray(report.ongoing_care) ? report.ongoing_care : [];
-            els.ongoingCareList.innerHTML = careItems.map(item => `
-                <li class="flex items-start gap-2.5 text-sm text-slate-700 leading-relaxed">
-                    <svg class="w-4 h-4 text-sky-600 shrink-0 mt-1" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    <span>${escapeHtml(item)}</span>
-                </li>
-            `).join("");
-
-            // 3. Warning Signs
-            const warnings = Array.isArray(report.warning_signs) ? report.warning_signs : [];
-            els.warningSignsList.innerHTML = warnings.map(sign => `
-                <li class="flex items-start gap-2">
-                    <span class="text-amber-600 font-bold mt-0.5">&bull;</span>
-                    <span>${escapeHtml(sign)}</span>
-                </li>
-            `).join("");
-
-            // 4. Recommended Supplies
-            const supplies = Array.isArray(report.recommended_supplies) ? report.recommended_supplies : [];
-            els.suppliesList.innerHTML = supplies.map(item => `
-                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200/80 text-sky-900 text-xs font-semibold">
-                    <svg class="w-3.5 h-3.5 text-sky-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    ${escapeHtml(item)}
-                </span>
-            `).join("");
-
-            // Smooth scroll into view on mobile
-            if (window.innerWidth < 1024) {
-                els.reportResultCard.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-        }
-
-        // Copy Care Plan to Clipboard (using document.execCommand for iFrame compatibility)
-        els.copyReportBtn.addEventListener("click", () => {
-            if (!state.lastReport) return;
-            const r = state.lastReport;
-            const plainText = [
-                `DOCTOR AI — WOUND CARE REPORT`,
-                `Wound Type: ${r.wound_type}`,
-                `Severity: ${r.severity_level}`,
-                `Summary: ${r.assessment_summary}`,
-                ``,
-                `IMMEDIATE FIRST-AID SOLUTION:`,
-                ...(r.immediate_solution || []).map((s, i) => `${i + 1}. ${s}`),
-                ``,
-                `PROPER ONGOING CARE:`,
-                ...(r.ongoing_care || []).map(c => `- ${c}`),
-                ``,
-                `WARNING SIGNS (SEEK MEDICAL HELP):`,
-                ...(r.warning_signs || []).map(w => `! ${w}`),
-                ``,
-                `RECOMMENDED SUPPLIES: ${(r.recommended_supplies || []).join(", ")}`,
-                ``,
-                `Disclaimer: AI-assisted first-aid guidance only. Not a substitute for professional medical care.`
-            ].join("\n");
-
-            const textArea = document.createElement("textarea");
-            textArea.value = plainText;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
-                document.execCommand("copy");
-                showToast("Care plan copied to clipboard!", "success");
-            } catch (err) {
-                showToast("Could not copy text automatically.", "error");
-            }
-            document.body.removeChild(textArea);
-        });
-
-        // Reset Scan
-        els.resetScanBtn.addEventListener("click", () => {
-            clearSelectedImage();
-            els.woundNotes.value = "";
-            state.selectedChips.clear();
-            document.querySelectorAll(".chip-btn").forEach(btn => {
-                btn.classList.remove("bg-sky-600", "text-white", "border-sky-600", "shadow-sm");
-                btn.classList.add("bg-slate-50", "text-slate-700", "border-slate-200");
-            });
-            els.reportResultCard.classList.add("hidden");
-            els.reportEmptyState.classList.remove("hidden");
-            document.getElementById("scanner-section").scrollIntoView({ behavior: "smooth" });
-        });
-
-        // =========================================================================
-        // NEAREST HOSPITALS & MEDICAL SHOPS (GEOLOCATION + GEMINI SEARCH GROUNDING)
-        // =========================================================================
-        // NEAREST HOSPITALS & MEDICAL SHOPS (KEYLESS OPENSTREETMAP + LIVE MAP)
-        // =========================================================================
-
-        function updateMapsLinks(locationQuery, coords = null) {
-            if (coords) {
-                const { lat, lng } = coords;
-                els.mapsHospitalsLink.href = `https://www.google.com/maps/search/hospitals/@${lat},${lng},14z`;
-                els.mapsEmergencyLink.href = `https://www.google.com/maps/search/emergency+room/@${lat},${lng},14z`;
-                els.mapsPharmaciesLink.href = `https://www.google.com/maps/search/24+hour+pharmacy+medical+shop/@${lat},${lng},14z`;
-                els.activeLocationLabel.textContent = `Google Maps ready for your current GPS location`;
-            } else if (locationQuery) {
-                const q = encodeURIComponent(locationQuery);
-                els.mapsHospitalsLink.href = `https://www.google.com/maps/search/hospitals+in+${q}`;
-                els.mapsEmergencyLink.href = `https://www.google.com/maps/search/emergency+room+in+${q}`;
-                els.mapsPharmaciesLink.href = `https://www.google.com/maps/search/medical+shop+pharmacy+in+${q}`;
-                els.activeLocationLabel.textContent = `Google Maps ready for "${locationQuery}"`;
-            }
-        }
-
-        /**
-         * Updates the embedded live Google Maps preview iframe for the active tab.
-         */
-        function updateEmbeddedMap() {
-            if (!state.lastNearbySearch) return;
-            const { lat, lng, label, rawQuery } = state.lastNearbySearch;
-            const isHospitals = state.activeNearbyTab === "hospitals";
-            const placeTerm = isHospitals ? "hospitals" : "pharmacy medical shop";
-            const locText = rawQuery || label || `${lat},${lng}`;
-
-            els.embeddedMapTitle.textContent = isHospitals
-                ? `Live Map: Hospitals near ${label || locText}`
-                : `Live Map: Medical Shops & Pharmacies near ${label || locText}`;
-
-            const embedQuery = encodeURIComponent(`${placeTerm} near ${locText}`);
-            els.nearbyMapIframe.src = `https://maps.google.com/maps?q=${embedQuery}&z=13&output=embed`;
-            els.nearbyMapContainer.classList.remove("hidden");
-        }
-
-        els.toggleMapBtn.addEventListener("click", () => {
-            state.mapVisible = !state.mapVisible;
-            els.embeddedMapBody.classList.toggle("hidden", !state.mapVisible);
-            els.toggleMapBtn.textContent = state.mapVisible ? "Hide Map" : "Show Map";
-        });
-
-        /**
-         * Calculates exact Haversine distance in kilometers between two lat/lng points.
-         */
-        function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-            const toRad = (deg) => (deg * Math.PI) / 180;
-            const R = 6371;
-            const dLat = toRad(lat2 - lat1);
-            const dLon = toRad(lon2 - lon1);
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-        }
-
-        function formatDistance(km) {
-            if (typeof km !== "number" || Number.isNaN(km)) return "";
-            if (km < 1) return `${Math.max(50, Math.round(km * 1000))} m away`;
-            return `${km.toFixed(1)} km away`;
-        }
-
-        /**
-         * Fetch with AbortController timeout so slow mirrors never hang the UI.
-         */
-        async function fetchWithTimeout(url, options = {}, timeoutMs = 11000) {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
-            try {
-                return await fetch(url, { ...options, signal: controller.signal });
-            } finally {
-                clearTimeout(timer);
-            }
-        }
-
-        /**
-         * Extracts a clean human-readable locality name from a Nominatim result.
-         */
-        function formatNominatimArea(item, fallbackQuery) {
-            const addr = item?.address || {};
-            const primary = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state_district;
-            const stateName = addr.state;
-            if (primary && stateName) return `${primary}, ${stateName}`;
-            if (primary) return primary;
-            if (item?.display_name) {
-                return item.display_name.split(",").slice(0, 2).join(",").trim();
-            }
-            return fallbackQuery;
-        }
-
-        /**
-         * Geocodes a user query (including 6-digit Indian pincodes like 827013) via Nominatim.
-         */
-        async function geocodeLocation(rawQuery) {
-            const trimmed = rawQuery.trim();
-            const isIndianPincode = /^\d{6}$/.test(trimmed);
-
-            const urlsToTry = [];
-            if (isIndianPincode) {
-                urlsToTry.push(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&postalcode=${encodeURIComponent(trimmed)}&country=India`);
-                urlsToTry.push(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(trimmed + ", India")}`);
-            } else {
-                urlsToTry.push(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(trimmed)}`);
-                if (!/india/i.test(trimmed)) {
-                    urlsToTry.push(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(trimmed + ", India")}`);
-                }
-            }
-
-            for (const url of urlsToTry) {
-                try {
-                    const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } }, 9000);
-                    if (!res.ok) continue;
-                    const data = await res.json();
-                    if (Array.isArray(data) && data.length > 0) {
-                        const hit = data[0];
-                        return {
-                            lat: parseFloat(hit.lat),
-                            lng: parseFloat(hit.lon),
-                            label: formatNominatimArea(hit, trimmed)
-                        };
-                    }
-                } catch (err) {
-                    // Try next fallback URL
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Reverse geocodes GPS coordinates to a readable city/locality name.
-         */
-        async function reverseGeocode(lat, lng) {
-            try {
-                const url = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}`;
-                const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } }, 7000);
-                if (!res.ok) return null;
-                const data = await res.json();
-                return formatNominatimArea(data, `${lat.toFixed(3)}, ${lng.toFixed(3)}`);
-            } catch (err) {
-                return null;
-            }
-        }
-
-        /**
-         * Queries Overpass API across mirrors with automatic fallback.
+         * Queries Overpass API across mirrors with an 8-second timeout and automatic fallback.
          */
         async function queryOverpassMirrors(overpassQuery) {
             for (const mirrorUrl of OVERPASS_MIRRORS) {
@@ -1693,7 +1013,7 @@
                             headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
                             body: `data=${encodeURIComponent(overpassQuery)}`
                         },
-                        12000
+                        8000
                     );
                     if (!res.ok) continue;
                     const json = await res.json();
@@ -1705,6 +1025,177 @@
                 }
             }
             return null;
+        }
+
+        /**
+         * Layer 1 (Primary): Queries Nominatim Search API using a ±0.15° (~15km) bounding box.
+         */
+        async function queryNominatimBounded(lat, lng, fallbackArea) {
+            const delta = 0.15;
+            const left = (lng - delta).toFixed(5);
+            const top = (lat + delta).toFixed(5);
+            const right = (lng + delta).toFixed(5);
+            const bottom = (lat - delta).toFixed(5);
+            const viewbox = `${left},${top},${right},${bottom}`;
+
+            const searches = [
+                { q: "hospital", type: "hospital", defaultCat: "Hospital" },
+                { q: "clinic", type: "hospital", defaultCat: "Clinic" },
+                { q: "pharmacy", type: "pharmacy", defaultCat: "Pharmacy" },
+                { q: "medical", type: "pharmacy", defaultCat: "Pharmacy" }
+            ];
+
+            const hospitals = [];
+            const pharmacies = [];
+
+            for (const item of searches) {
+                try {
+                    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&bounded=1&limit=15&viewbox=${encodeURIComponent(viewbox)}&q=${encodeURIComponent(item.q)}`;
+                    const res = await fetchWithTimeout(url, { headers: { Accept: "application/json" } }, 8000);
+                    if (res.ok) {
+                        const results = await res.json();
+                        if (Array.isArray(results)) {
+                            for (const place of results) {
+                                const pLat = parseFloat(place.lat);
+                                const pLng = parseFloat(place.lon);
+                                if (Number.isNaN(pLat) || Number.isNaN(pLng)) continue;
+
+                                const rawName = (place.name || (place.display_name || "").split(",")[0] || "").trim();
+                                if (!rawName) continue;
+
+                                const addr = place.address || {};
+                                const addrParts = [
+                                    addr.road,
+                                    addr.suburb || addr.neighbourhood,
+                                    addr.city || addr.town || addr.village,
+                                    addr.postcode
+                                ].filter(Boolean);
+                                const address = addrParts.length > 0 ? addrParts.join(", ") : fallbackArea;
+
+                                const entry = {
+                                    name: rawName,
+                                    category: item.defaultCat,
+                                    address,
+                                    phone: "",
+                                    hours: "",
+                                    lat: pLat,
+                                    lng: pLng,
+                                    distanceKm: calculateDistanceKm(lat, lng, pLat, pLng)
+                                };
+
+                                if (item.type === "pharmacy") {
+                                    pharmacies.push(entry);
+                                } else {
+                                    hospitals.push(entry);
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    // Continue with remaining queries
+                }
+                // Gentle spacing to respect Nominatim rate limits
+                await new Promise(r => setTimeout(r, 350));
+            }
+
+            return { hospitals, pharmacies };
+        }
+
+        /**
+         * Layer 3 (Fallback): Uses Gemini with Google Search grounding when OSM returns 0 results.
+         */
+        async function queryGeminiNearbyFallback(areaLabel, rawQuery, needHospitals, needPharmacies) {
+            const activeKey = getActiveApiKey();
+            if (!activeKey && isStandaloneHost()) {
+                return { hospitals: [], pharmacies: [] };
+            }
+
+            const locationDesc = rawQuery && rawQuery !== areaLabel ? `${areaLabel} (pincode/query: ${rawQuery})` : areaLabel;
+            const prompt = [
+                `Find real nearby medical facilities in or near ${locationDesc}.`,
+                needHospitals ? `List 5 real hospitals or clinics.` : `Return an empty array for hospitals.`,
+                needPharmacies ? `List 5 real medical shops or pharmacies.` : `Return an empty array for pharmacies.`,
+                `Return ONLY a valid JSON object with no extra text, using this exact structure:`,
+                `{"hospitals":[{"name":"...","category":"Hospital","address":"...","phone":"","hours":""}],"pharmacies":[{"name":"...","category":"Pharmacy","address":"...","phone":"","hours":""}]}`
+            ].join("\n");
+
+            try {
+                const result = await fetchGeminiWithBackoff({
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                    tools: [{ google_search: {} }]
+                }, 2);
+
+                const rawText = result?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
+                const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) return { hospitals: [], pharmacies: [] };
+
+                const parsed = JSON.parse(jsonMatch[0]);
+                const mapItems = (list, defaultCat) =>
+                    (Array.isArray(list) ? list : [])
+                        .filter(x => x && x.name)
+                        .slice(0, 5)
+                        .map(x => ({
+                            name: String(x.name).trim(),
+                            category: x.category || defaultCat,
+                            address: x.address || areaLabel,
+                            phone: x.phone || "",
+                            hours: x.hours || "",
+                            lat: null,
+                            lng: null,
+                            distanceKm: null
+                        }));
+
+                return {
+                    hospitals: needHospitals ? mapItems(parsed.hospitals, "Hospital") : [],
+                    pharmacies: needPharmacies ? mapItems(parsed.pharmacies, "Pharmacy") : []
+                };
+            } catch (err) {
+                console.error("Gemini nearby fallback error:", err);
+                return { hospitals: [], pharmacies: [] };
+            }
+        }
+
+        /**
+         * Deduplicates facility lists by normalized name or close coordinates, then sorts nearest-first.
+         */
+        function mergeAndDeduplicate(listA, listB) {
+            const merged = [];
+            for (const item of [...listA, ...listB]) {
+                if (!item || !item.name) continue;
+                const normName = item.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+                const existingIdx = merged.findIndex(existing => {
+                    const existingNorm = existing.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+                    if (existingNorm === normName) return true;
+                    if (
+                        typeof existing.lat === "number" && typeof item.lat === "number" &&
+                        calculateDistanceKm(existing.lat, existing.lng, item.lat, item.lng) < 0.04
+                    ) {
+                        return true;
+                    }
+                    return false;
+                });
+
+                if (existingIdx === -1) {
+                    merged.push(item);
+                } else {
+                    // Keep the entry with richer metadata (phone/hours) or closer distance
+                    const prev = merged[existingIdx];
+                    merged[existingIdx] = {
+                        ...prev,
+                        phone: prev.phone || item.phone,
+                        hours: prev.hours || item.hours,
+                        address: (prev.address && prev.address.length >= (item.address || "").length) ? prev.address : item.address
+                    };
+                }
+            }
+
+            return merged
+                .sort((a, b) => {
+                    const da = typeof a.distanceKm === "number" ? a.distanceKm : 9999;
+                    const db = typeof b.distanceKm === "number" ? b.distanceKm : 9999;
+                    return da - db;
+                })
+                .slice(0, 12);
         }
 
         /**
@@ -1800,7 +1291,7 @@
         }
 
         function buildOverpassQuery(lat, lng, radiusMeters) {
-            return `[out:json][timeout:12];
+            return `[out:json][timeout:8];
 (
   nwr["amenity"~"^(hospital|clinic|doctors|pharmacy)$"](around:${radiusMeters},${lat},${lng});
   nwr["healthcare"~"^(hospital|clinic|pharmacy)$"](around:${radiusMeters},${lat},${lng});
@@ -1922,7 +1413,10 @@ out center tags;`;
         els.tabPharmacies.addEventListener("click", () => setActiveNearbyTab("pharmacies"));
 
         /**
-         * Fetches real nearby hospitals and medical shops via Overpass API with automatic radius expansion.
+         * Fetches real nearby hospitals and medical shops using a 3-layer fallback:
+         * Layer 1: Nominatim bounded search (±0.15°)
+         * Layer 2: Overpass API enrichment (12 km)
+         * Layer 3: Gemini Google Search grounding fallback (if OSM returns 0)
          * Skeleton loading state is ALWAYS cleared in the finally block.
          */
         async function fetchNearbyOpenStreetMap(lat, lng, areaLabel, rawQuery) {
@@ -1932,36 +1426,50 @@ out center tags;`;
             els.nearbyNoResultsState.classList.add("hidden");
             els.hospitalsGrid.classList.add("hidden");
             els.pharmaciesGrid.classList.add("hidden");
-            els.nearbyLoadingText.textContent = `Searching hospitals & medical shops within 6 km of ${areaLabel}...`;
+            els.nearbyLoadingText.textContent = `Searching hospitals & medical shops near ${areaLabel}...`;
             els.nearbyLoadingState.classList.remove("hidden");
 
             // Show live embedded map immediately so the user gets instant visual feedback
             updateEmbeddedMap();
 
             try {
-                let elements = await queryOverpassMirrors(buildOverpassQuery(lat, lng, 6000));
-                let parsed = elements ? parseOverpassFacilities(elements, lat, lng, areaLabel) : { hospitals: [], pharmacies: [] };
+                // Run Layer 1 (Nominatim bounded) and Layer 2 (Overpass 12 km) in parallel
+                const [nomResult, overpassElements] = await Promise.all([
+                    queryNominatimBounded(lat, lng, areaLabel),
+                    queryOverpassMirrors(buildOverpassQuery(lat, lng, 12000))
+                ]);
 
-                // Auto-expand search radius to 15 km if fewer than 3 hospitals or pharmacies found
-                if (parsed.hospitals.length < 3 || parsed.pharmacies.length < 3) {
-                    els.nearbyLoadingText.textContent = `Expanding search radius to 15 km around ${areaLabel}...`;
-                    const widerElements = await queryOverpassMirrors(buildOverpassQuery(lat, lng, 15000));
-                    if (widerElements) {
-                        parsed = parseOverpassFacilities(widerElements, lat, lng, areaLabel);
-                    }
+                const overpassParsed = overpassElements
+                    ? parseOverpassFacilities(overpassElements, lat, lng, areaLabel)
+                    : { hospitals: [], pharmacies: [] };
+
+                let hospitals = mergeAndDeduplicate(nomResult.hospitals, overpassParsed.hospitals);
+                let pharmacies = mergeAndDeduplicate(nomResult.pharmacies, overpassParsed.pharmacies);
+
+                // Layer 3: Gemini Search grounding fallback if either list is still empty
+                if (hospitals.length === 0 || pharmacies.length === 0) {
+                    els.nearbyLoadingText.textContent = `Fetching verified local listings for ${areaLabel}...`;
+                    const geminiFallback = await queryGeminiNearbyFallback(
+                        areaLabel,
+                        rawQuery,
+                        hospitals.length === 0,
+                        pharmacies.length === 0
+                    );
+                    if (hospitals.length === 0) hospitals = geminiFallback.hospitals;
+                    if (pharmacies.length === 0) pharmacies = geminiFallback.pharmacies;
                 }
 
-                state.nearbyData = parsed;
+                state.nearbyData = { hospitals, pharmacies };
                 renderNearbyCards(areaLabel);
 
-                const totalFound = parsed.hospitals.length + parsed.pharmacies.length;
+                const totalFound = hospitals.length + pharmacies.length;
                 if (totalFound > 0) {
-                    showToast(`Found ${parsed.hospitals.length} hospitals & ${parsed.pharmacies.length} medical shops near ${areaLabel}.`, "success");
+                    showToast(`Found ${hospitals.length} hospitals & ${pharmacies.length} medical shops near ${areaLabel}.`, "success");
                 } else {
                     showToast("Directory busy — live Google Maps preview is ready below.", "info");
                 }
             } catch (err) {
-                console.error("Nearby OpenStreetMap error:", err);
+                console.error("Nearby search error:", err);
                 state.nearbyData = { hospitals: [], pharmacies: [] };
                 renderNearbyCards(areaLabel);
                 showToast("Directory temporarily unavailable — live Google Maps preview is ready below.", "warning");
@@ -1989,10 +1497,22 @@ out center tags;`;
 
             const buildCard = (item, accent) => {
                 const badgeClass = categoryStyles[item.category] || "bg-sky-100 text-sky-700";
-                const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}&destination_place_id=&query=${encodeURIComponent(item.name)}`;
+                const hasCoords = typeof item.lat === "number" && typeof item.lng === "number";
+                const directionsUrl = hasCoords
+                    ? `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}&query=${encodeURIComponent(item.name)}`
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name}, ${item.address || areaName}`)}`;
                 const btnHover = accent === "emerald"
                     ? "text-emerald-700 hover:bg-emerald-600 hover:text-white border-emerald-200 hover:border-emerald-600"
                     : "text-sky-700 hover:bg-sky-600 hover:text-white border-sky-200 hover:border-sky-600";
+
+                const distanceHtml = typeof item.distanceKm === "number"
+                    ? `<div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
+                                <svg class="w-3 h-3 text-sky-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                                ${escapeHtml(formatDistance(item.distanceKm))}
+                            </span>
+                       </div>`
+                    : "";
 
                 const phoneHtml = item.phone
                     ? `<a href="tel:${escapeHtml(item.phone.replace(/[^+\d]/g, ""))}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-sky-700 transition">
@@ -2015,12 +1535,7 @@ out center tags;`;
                                 <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-snug">${escapeHtml(item.name)}</h3>
                                 <span class="shrink-0 px-2 py-0.5 rounded-lg ${badgeClass} text-[10px] font-bold uppercase tracking-wide">${escapeHtml(item.category)}</span>
                             </div>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
-                                    <svg class="w-3 h-3 text-sky-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
-                                    ${escapeHtml(formatDistance(item.distanceKm))}
-                                </span>
-                            </div>
+                            ${distanceHtml}
                             <p class="text-xs text-slate-500 leading-relaxed">${escapeHtml(item.address || areaName)}</p>
                             <div class="space-y-1">
                                 ${hoursHtml}
